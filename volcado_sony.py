@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 r"""
-VolcadoSony — Volcado de tarjetas SD de Sony A7III / A7SIII al disco duro.
+VolcadoSony — Volcado de tarjetas de cámaras Sony (XAVC S / XAVC HS) al disco duro.
+
+Compatible con cualquier cámara Sony que grabe con la estructura PRIVATE\M4ROOT:
+Alpha (A7/A9/A1/A6xxx), ZV, RX, FX3/FX30, compactas HX/WX y Handycam 4K.
 
 Estructura de la tarjeta:
     unidad:\PRIVATE\M4ROOT\CLIP   -> brutos de video (*.MP4) + sidecars XML (*M01.XML)
@@ -45,7 +48,7 @@ from rich.text import Text
 
 # ----------------------------- Configuracion ------------------------------ #
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 
 CHUNK = 8 * 1024 * 1024          # tamano de bloque de copia (8 MB)
 COPIAR_XML = True                # copiar tambien los sidecars XML de los brutos
@@ -284,7 +287,6 @@ def escanear(origen: Path) -> tuple[list[Clip], int]:
 def banner() -> None:
     titulo = Text()
     titulo.append("VOLCADO SONY", style="bold white")
-    titulo.append("  A7III / A7SIII", style="dim")
     sub = Text("Volcado de brutos y proxies de tarjeta SD al disco duro", style="cyan")
     console.print()
     console.print(Panel(Align.center(Group(Align.center(titulo), Align.center(sub))),
@@ -538,7 +540,7 @@ def resumen_final(resultados, errores, segundos, destino: Path) -> None:
 def main() -> None:
     if os.name == "nt":
         try:
-            ctypes.windll.kernel32.SetConsoleTitleW("VolcadoSony — A7III / A7SIII")
+            ctypes.windll.kernel32.SetConsoleTitleW("VolcadoSony")
         except Exception:
             pass
 

@@ -6,9 +6,13 @@
 ![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![MIT License](https://img.shields.io/badge/License-MIT-green)
 
-Offload **Sony A7III / A7SIII** SD cards to your hard drive, in text mode with
+Offload **Sony camera** memory cards to your hard drive, in text mode with
 a polished console UI: colors, triple progress bars (current file, batch,
 total), transfer speed, elapsed time and ETA. The interface is in Spanish.
+
+Works with **any Sony camera that records XAVC S / XAVC HS** — Alpha, ZV,
+RX, FX3/FX30, compacts and 4K Handycams — since they all share the same card
+structure. [Full list here](#compatible-cameras).
 
 ![VolcadoSony screenshot](docs/captura.svg)
 
@@ -30,6 +34,36 @@ total), transfer speed, elapsed time and ETA. The interface is in Spanish.
    `C0001_Proxy.MP4`). Orphan proxies (with no matching original) are skipped.
 7. Writes a `volcado_YYYYMMDD_HHMMSS.txt` log in the destination with the
    details of every file.
+
+## Compatible cameras
+
+It works with **any Sony camera recording XAVC S, XAVC S-I or XAVC HS**:
+they all store the originals in `PRIVATE\M4ROOT\CLIP` and the proxies in
+`PRIVATE\M4ROOT\SUB`.
+
+- **Cinema Line**: FX3, FX30
+- **Full-frame Alpha**: A7S, A7S II, A7S III · A7 II\*, A7 III, A7 IV ·
+  A7R II, A7R III, A7R IV, A7R V · A7C, A7C II, A7CR · A9, A9 II, A9 III ·
+  A1, A1 II
+- **APS-C Alpha**: A6100, A6300, A6400, A6500, A6600, A6700
+- **ZV series**: ZV-1, ZV-1 II, ZV-1F, ZV-E10, ZV-E10 II, ZV-E1
+- **RX series**: RX100 III to VII · RX10\* and RX10 II to IV · RX0, RX0 II ·
+  RX1R II
+- **Travel compacts**: HX95, HX99, WX700, WX800
+- **4K Handycam**: FDR-AX33, AX40, AX43, AX45, AX53, AX60, AX100, AX700
+  (and AXP projector variants)
+- **Compact pro camcorders**: HXR-NX80, PXW-Z90 (in XAVC S mode)
+- **A-mount**: A99 II
+
+\* The original A7 II and RX10 need firmware 2.0, which added XAVC S.
+
+Not every model records proxies (only those with *Proxy Recording*); on the
+rest there is simply nothing to copy into `Proxies\`.
+
+**Not compatible**: the FX6, FX9, Burano and Venice cinema cameras and XDCAM
+gear use a different structure (`PRIVATE\XDROOT`, MXF files), and models that
+only record AVCHD/MP4 (A6000, A5100, original RX100s...) never create the
+`M4ROOT` folder.
 
 ## Download
 

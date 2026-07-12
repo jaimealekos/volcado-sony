@@ -23,12 +23,11 @@ console = Console(record=True, width=96, force_terminal=True, legacy_windows=Fal
 # --- Banner (identico al del programa) ---
 titulo = Text()
 titulo.append("VOLCADO SONY", style="bold white")
-titulo.append("  A7III / A7SIII", style="dim")
 sub = Text("Volcado de brutos y proxies de tarjeta SD al disco duro", style="cyan")
 console.print()
 console.print(Panel(Align.center(Group(Align.center(titulo), Align.center(sub))),
                     box=box.DOUBLE, border_style="bright_magenta", padding=(1, 4),
-                    subtitle="[dim]v1.0.0[/]", subtitle_align="right"))
+                    subtitle="[dim]v1.0.1[/]", subtitle_align="right"))
 console.print()
 console.print("  [bold green]✔[/] Tarjeta SD detectada en [bold]E:[/]\\")
 console.print()

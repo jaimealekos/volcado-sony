@@ -6,9 +6,13 @@
 ![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![Licencia MIT](https://img.shields.io/badge/Licencia-MIT-green)
 
-Volcado de tarjetas SD de **Sony A7III / A7SIII** al disco duro, en modo texto
-con una interfaz cuidada: colores, barras de progreso triples (fichero, lote,
-total), velocidad, tiempo transcurrido y ETA.
+Volcado de tarjetas de memoria de **cámaras Sony** al disco duro, en modo
+texto con una interfaz cuidada: colores, barras de progreso triples (fichero,
+lote, total), velocidad, tiempo transcurrido y ETA.
+
+Funciona con **cualquier cámara Sony que grabe XAVC S / XAVC HS** — Alpha,
+ZV, RX, FX3/FX30, compactas y Handycam 4K — porque todas usan la misma
+estructura de tarjeta. [Lista completa aquí](#cámaras-compatibles).
 
 ![Captura de VolcadoSony](docs/captura.svg)
 
@@ -29,6 +33,36 @@ total), velocidad, tiempo transcurrido y ETA.
    `C0001_Proxy.MP4`). Los proxies sin bruto asociado no se copian.
 7. Deja un registro `volcado_AAAAMMDD_HHMMSS.txt` en el Destino con el detalle
    de cada fichero.
+
+## Cámaras compatibles
+
+Sirve para **cualquier cámara Sony que grabe XAVC S, XAVC S-I o XAVC HS**:
+todas guardan los brutos en `PRIVATE\M4ROOT\CLIP` y los proxies en
+`PRIVATE\M4ROOT\SUB`.
+
+- **Cinema Line**: FX3, FX30
+- **Alpha full-frame**: A7S, A7S II, A7S III · A7 II\*, A7 III, A7 IV ·
+  A7R II, A7R III, A7R IV, A7R V · A7C, A7C II, A7CR · A9, A9 II, A9 III ·
+  A1, A1 II
+- **Alpha APS-C**: A6100, A6300, A6400, A6500, A6600, A6700
+- **Serie ZV**: ZV-1, ZV-1 II, ZV-1F, ZV-E10, ZV-E10 II, ZV-E1
+- **Serie RX**: RX100 III a VII · RX10\* y RX10 II a IV · RX0, RX0 II ·
+  RX1R II
+- **Compactas de viaje**: HX95, HX99, WX700, WX800
+- **Handycam 4K**: FDR-AX33, AX40, AX43, AX45, AX53, AX60, AX100, AX700
+  (y variantes AXP con proyector)
+- **Videocámaras pro compactas**: HXR-NX80, PXW-Z90 (en modo XAVC S)
+- **Montura A**: A99 II
+
+\* Los A7 II y RX10 originales necesitan el firmware 2.0, que añadió XAVC S.
+
+No todos los modelos generan proxies (solo los que tienen *Proxy Recording*);
+en los demás simplemente no habrá nada que copiar a `Proxies\`.
+
+**No compatibles**: las cámaras de cine FX6, FX9, Burano y Venice y los
+equipos XDCAM usan otra estructura (`PRIVATE\XDROOT`, ficheros MXF), y los
+modelos que solo graban AVCHD/MP4 (A6000, A5100, RX100 originales...) no
+generan la carpeta `M4ROOT`.
 
 ## Descarga
 
