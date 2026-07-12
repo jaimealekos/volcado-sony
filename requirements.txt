@@ -1,0 +1,5 @@
+# Ejecución
+rich>=13.0
+
+# Solo para compilar el .exe
+# pyinstaller>=6.0

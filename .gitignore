@@ -1,0 +1,10 @@
+# Python
+__pycache__/
+*.pyc
+
+# Configuración local de herramientas
+.claude/
+
+# PyInstaller (el .exe se distribuye en GitHub Releases, no en el repo)
+build/
+dist/
