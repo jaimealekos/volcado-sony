@@ -49,7 +49,7 @@ from rich.text import Text
 
 # ----------------------------- Configuracion ------------------------------ #
 
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 
 CHUNK = 8 * 1024 * 1024          # tamano de bloque de copia (8 MB)
 COPIAR_XML = True                # copiar tambien los sidecars XML de los brutos

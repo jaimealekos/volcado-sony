@@ -27,7 +27,7 @@ sub = Text("Volcado de brutos y proxies de tarjeta SD al disco duro", style="cya
 console.print()
 console.print(Panel(Align.center(Group(Align.center(titulo), Align.center(sub))),
                     box=box.DOUBLE, border_style="bright_magenta", padding=(1, 4),
-                    subtitle="[dim]v1.0.1[/]", subtitle_align="right"))
+                    subtitle="[dim]v1.0.2[/]", subtitle_align="right"))
 console.print()
 console.print("  [bold green]✔[/] Tarjeta SD detectada en [bold]E:[/]\\")
 console.print()
