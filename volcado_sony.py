@@ -52,6 +52,7 @@ VERSION = "1.0.1"
 
 CHUNK = 8 * 1024 * 1024          # tamano de bloque de copia (8 MB)
 COPIAR_XML = True                # copiar tambien los sidecars XML de los brutos
+CARPETA_XML = "_xml"             # nombre de la subcarpeta de sidecars XML
 CARPETA_PROXIES = "Proxies"      # nombre de la subcarpeta de proxies
 SUFIJO_PROXY_ORIGEN = "S03"      # sufijo Sony del proxy
 SUFIJO_PROXY_DESTINO = "_Proxy"  # sufijo con el que se renombra al copiar
@@ -399,10 +400,10 @@ def nombre_proxy_destino(proxy: Path) -> str:
 
 
 def volcar(seleccion: list[Clip], destino: Path) -> tuple[list, list, float]:
-    """Copia brutos (+XML) por lotes de jornada y despues sus proxies.
+    """Copia cada bruto por lotes de jornada, seguido de su XML y su proxy.
 
     Devuelve (resultados, errores, segundos)."""
-    # Lotes de brutos, uno por jornada, en orden cronologico
+    # Lotes de clips, uno por jornada, en orden cronologico
     por_dia: dict = {}
     for c in seleccion:
         por_dia.setdefault(c.fecha, []).append(c)
@@ -414,20 +415,23 @@ def volcar(seleccion: list[Clip], destino: Path) -> tuple[list, list, float]:
         for c in por_dia[dia]:
             trabajos.append((c.ruta, destino / c.ruta.name, "bruto"))
             if COPIAR_XML and c.xml:
-                trabajos.append((c.xml, destino / c.xml.name, "xml"))
+                trabajos.append((c.xml, destino / CARPETA_XML / c.xml.name, "xml"))
+            if c.proxy:
+                trabajos.append((c.proxy,
+                                 destino / CARPETA_PROXIES / nombre_proxy_destino(c.proxy),
+                                 "proxy"))
         grupos.append((f"LOTE {i}/{len(dias)} · {dia:%d/%m}", trabajos))
-
-    proxies = [(c.proxy, destino / CARPETA_PROXIES / nombre_proxy_destino(c.proxy),
-                "proxy") for c in seleccion if c.proxy]
-    if proxies:
-        grupos.append(("PROXIES", proxies))
 
     todos = [t for _, trabajos in grupos for t in trabajos]
     total_bytes = sum(t[0].stat().st_size for t in todos)
     n_visibles = sum(1 for t in todos if t[2] != "xml")
+    hay_xml = any(t[2] == "xml" for t in todos)
+    hay_proxy = any(t[2] == "proxy" for t in todos)
 
     destino.mkdir(parents=True, exist_ok=True)
-    if proxies:
+    if hay_xml:
+        (destino / CARPETA_XML).mkdir(exist_ok=True)
+    if hay_proxy:
         (destino / CARPETA_PROXIES).mkdir(exist_ok=True)
 
     resultados, errores = [], []
@@ -498,7 +502,7 @@ def resumen_final(resultados, errores, segundos, destino: Path) -> None:
     t.add_row("Brutos", f"{len(brutos)} clips")
     t.add_row("Proxies", f"{len(proxies)} → carpeta {CARPETA_PROXIES}\\")
     if xmls:
-        t.add_row("Metadatos", f"{len(xmls)} XML de cámara")
+        t.add_row("Metadatos", f"{len(xmls)} XML → carpeta {CARPETA_XML}\\")
     if omitidos:
         t.add_row("Ya existían", f"{len(omitidos)} (omitidos, tamaño idéntico)")
     t.add_row("Volumen", gb(total_bytes))

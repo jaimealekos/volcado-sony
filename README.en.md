@@ -27,12 +27,12 @@ structure. [Full list here](#compatible-cameras).
    - If you answer `n`, it groups the footage into **batches per shooting
      day** (recording date) and offers each batch one by one. All selected
      batches go to the same destination folder.
-5. Copies the camera originals (plus their camera metadata XML sidecars) to
-   the destination folder, batch by batch in chronological order.
-6. Copies the proxies of the copied clips into the `Proxies\` subfolder,
-   renaming the `S03` suffix to `_Proxy` (e.g. `C0001S03.MP4` →
-   `C0001_Proxy.MP4`). Orphan proxies (with no matching original) are skipped.
-7. Writes a `volcado_YYYYMMDD_HHMMSS.txt` log in the destination with the
+5. Copies the camera originals batch by batch in chronological order; each
+   original is followed by its camera metadata XML sidecar (into the `_xml\`
+   subfolder) and its proxy (into the `Proxies\` subfolder, renaming the `S03`
+   suffix to `_Proxy`, e.g. `C0001S03.MP4` → `C0001_Proxy.MP4`). Orphan
+   proxies (with no matching original) are skipped.
+6. Writes a `volcado_YYYYMMDD_HHMMSS.txt` log in the destination with the
    details of every file.
 
 ## Compatible cameras
@@ -117,7 +117,8 @@ Constants at the top of `volcado_sony.py`:
 
 | Constant | Default | Meaning |
 |---|---|---|
-| `COPIAR_XML` | `True` | Copy the camera XML sidecars along with the originals |
+| `COPIAR_XML` | `True` | Copy the camera XML sidecars into the `_xml\` subfolder |
+| `CARPETA_XML` | `"_xml"` | Name of the XML sidecars subfolder |
 | `CARPETA_PROXIES` | `"Proxies"` | Name of the proxies subfolder |
 | `SUFIJO_PROXY_DESTINO` | `"_Proxy"` | Suffix used when renaming proxies |
 | `CHUNK` | 8 MB | Copy block size |

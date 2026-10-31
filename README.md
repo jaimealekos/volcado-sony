@@ -26,12 +26,12 @@ estructura de tarjeta. [Lista completa aquí](#cámaras-compatibles).
    - Si respondes `n`, agrupa los brutos en **lotes por jornada** (fecha de
      grabación) y va preguntando lote a lote. Todos los lotes seleccionados
      van a la misma carpeta Destino.
-5. Copia los brutos (y sus XML de metadatos de cámara) a la carpeta Destino,
-   por lotes en orden cronológico.
-6. Copia los proxies de los brutos copiados a la subcarpeta `Proxies\`,
-   renombrando el sufijo `S03` por `_Proxy` (ej. `C0001S03.MP4` →
-   `C0001_Proxy.MP4`). Los proxies sin bruto asociado no se copian.
-7. Deja un registro `volcado_AAAAMMDD_HHMMSS.txt` en el Destino con el detalle
+5. Copia los brutos por lotes en orden cronológico; cada bruto va seguido de
+   su XML de metadatos de cámara (a la subcarpeta `_xml\`) y de su proxy (a
+   la subcarpeta `Proxies\`, renombrando el sufijo `S03` por `_Proxy`, ej.
+   `C0001S03.MP4` → `C0001_Proxy.MP4`). Los proxies sin bruto asociado no se
+   copian.
+6. Deja un registro `volcado_AAAAMMDD_HHMMSS.txt` en el Destino con el detalle
    de cada fichero.
 
 ## Cámaras compatibles
@@ -116,7 +116,8 @@ Constantes al principio de `volcado_sony.py`:
 
 | Constante | Por defecto | Significado |
 |---|---|---|
-| `COPIAR_XML` | `True` | Copiar los sidecars XML de la cámara junto a los brutos |
+| `COPIAR_XML` | `True` | Copiar los sidecars XML de la cámara a la subcarpeta `_xml\` |
+| `CARPETA_XML` | `"_xml"` | Nombre de la subcarpeta de sidecars XML |
 | `CARPETA_PROXIES` | `"Proxies"` | Nombre de la subcarpeta de proxies |
 | `SUFIJO_PROXY_DESTINO` | `"_Proxy"` | Sufijo con el que se renombra el proxy |
 | `CHUNK` | 8 MB | Tamaño de bloque de copia |
