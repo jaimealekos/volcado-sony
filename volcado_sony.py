@@ -19,6 +19,7 @@ import ctypes
 import ctypes.wintypes
 import os
 import re
+import shutil
 import string
 import sys
 import time
@@ -139,13 +140,21 @@ def preguntar(texto: str, por_defecto: str = "") -> str:
     try:
         return input().strip("\ufeff \t")
     except EOFError:
-        return ""
+        console.print()
+        console.print("  [bold red]✖ La entrada estándar se cerró: no se puede preguntar "
+                      "al usuario. Saliendo.[/]")
+        sys.exit(1)
 
 
 def si_no(texto: str) -> bool:
     """Enter = si, n/N = no."""
     r = preguntar(texto, "[Enter = Sí / n = No]")
     return not r.lower().startswith("n")
+
+
+def avisar(texto: str) -> None:
+    """Aviso no bloqueante: el volcado sigue adelante."""
+    console.print(f"  [yellow]⚠ {escape(texto)}[/]")
 
 
 def pausa_final() -> None:
@@ -166,7 +175,8 @@ def detectar_tarjetas() -> list[Path]:
         try:
             if (raiz / "PRIVATE" / "M4ROOT" / "CLIP").is_dir():
                 encontradas.append(raiz)
-        except OSError:
+        except OSError as e:
+            avisar(f"No se pudo leer la unidad {letra}: {e}")
             continue
     return encontradas
 
@@ -236,8 +246,12 @@ class Clip:
                         if v:
                             v = v.replace("Z", "+00:00")
                             return datetime.fromisoformat(v).date(), "XML"
-            except Exception:
-                pass
+            except (ET.ParseError, ValueError, OSError) as e:
+                avisar(f"XML ilegible ({xml.name}): {e}. "
+                       "Se usa la fecha del sistema de archivos.")
+            else:
+                avisar(f"El XML {xml.name} no trae una fecha de grabación válida. "
+                       "Se usa la fecha del sistema de archivos.")
         return datetime.fromtimestamp(self.ruta.stat().st_mtime).date(), "FS"
 
 
@@ -247,8 +261,8 @@ def buscar_insensible(carpeta: Path, nombre: str) -> Path | None:
         for f in carpeta.iterdir():
             if f.name.lower() == objetivo:
                 return f
-    except OSError:
-        pass
+    except OSError as e:
+        avisar(f"No se pudo listar la carpeta {carpeta}: {e}")
     return None
 
 
@@ -379,10 +393,9 @@ def copiar_archivo(src: Path, dst: Path, progreso: Progress,
             raise ErrorCopia(f"Tamaño incorrecto al copiar {src.name}")
         os.replace(parcial, dst)
         try:
-            import shutil
             shutil.copystat(src, dst)
-        except OSError:
-            pass
+        except OSError as e:
+            avisar(f"{dst.name} se copió, pero sin conservar la fecha original: {e}")
         return "copiado"
     except OSError as e:
         raise ErrorCopia(f"{src.name}: {e}") from e
@@ -390,8 +403,8 @@ def copiar_archivo(src: Path, dst: Path, progreso: Progress,
         if parcial.exists():
             try:
                 parcial.unlink()
-            except OSError:
-                pass
+            except OSError as e:
+                avisar(f"No se pudo borrar {parcial}; bórralo a mano: {e}")
 
 
 def nombre_proxy_destino(proxy: Path) -> str:
@@ -524,8 +537,8 @@ def resumen_final(resultados, errores, segundos, destino: Path) -> None:
     console.print(t)
 
     # Registro en el destino
+    log = destino / f"volcado_{datetime.now():%Y%m%d_%H%M%S}.txt"
     try:
-        log = destino / f"volcado_{datetime.now():%Y%m%d_%H%M%S}.txt"
         with open(log, "w", encoding="utf-8") as f:
             f.write(f"VolcadoSony — {datetime.now():%d/%m/%Y %H:%M:%S}\n")
             f.write(f"Destino: {destino}\n")
@@ -535,8 +548,12 @@ def resumen_final(resultados, errores, segundos, destino: Path) -> None:
             for e in errores:
                 f.write(f"[ERROR] {e}\n")
         console.print(f"  [dim]Registro guardado en {log.name}[/]")
-    except OSError:
-        pass
+    except OSError as e:
+        texto = (f"No se pudo guardar el registro en {escape(str(log))}: "
+                 f"{escape(str(e))}.")
+        if not errores:
+            texto += " Los ficheros sí se copiaron."
+        console.print(f"  [bold red]✖ {texto}[/]")
 
 
 # ----------------------------------- Main ---------------------------------- #
@@ -596,7 +613,6 @@ def main() -> None:
     necesario = sum(c.tamano for c in seleccion)
     necesario += sum(c.proxy.stat().st_size for c in seleccion if c.proxy)
     try:
-        import shutil
         libre = shutil.disk_usage(base if base.exists() else base.anchor).free
         if libre < necesario * 1.02:
             console.print(f"  [bold red]✖ Espacio insuficiente:[/] se necesitan "
@@ -605,8 +621,9 @@ def main() -> None:
             if not si_no("¿Continuar de todas formas?"):
                 pausa_final()
                 return
-    except OSError:
-        pass
+    except OSError as e:
+        avisar(f"No se pudo comprobar el espacio libre en {base.resolve().anchor}: "
+               f"se continúa sin comprobarlo ({e})")
 
     n_proxies = sum(1 for c in seleccion if c.proxy)
     console.print()
