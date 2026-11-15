@@ -14,3 +14,6 @@
 
 ## 5 · 2026-11-15
 «cambia que la dimensión de la ventana contemple que al lanzar la copia necesitará más altura para que al hacerlo no tengamos que tener scroll vertical»
+
+## 6 · 2026-11-15
+«al detener el volcado, que además, de salir, se pueda reiniciar»
