@@ -471,7 +471,7 @@ button, input {
 
 .day {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   column-gap: 1ch;
   align-items: start;
 }
@@ -499,6 +499,81 @@ button, input {
 
 .day__names {
   color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.day__thumbs {
+  display: flex;
+  align-items: flex-start;
+  gap: 1ch;
+}
+
+.thumb {
+  flex: none;
+  inline-size: 8ch;
+  aspect-ratio: 16 / 9;
+  margin: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--bg-2);
+  color: var(--dim);
+}
+
+.thumb:focus-visible {
+  outline: 1px solid var(--magenta);
+  outline-offset: 1px;
+}
+
+.thumb__img {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.thumb__none {
+  font-size: 11px;
+  color: var(--dim);
+}
+
+/* Ampliación flotante de una miniatura, sin desplazar la fila. */
+.zoom {
+  position: fixed;
+  z-index: 90;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  inline-size: 56ch;
+  max-inline-size: calc(100vw - 2ch);
+  margin: 0;
+  border: 1px solid var(--cyan);
+  border-radius: 2px;
+  background: var(--bg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  transition: opacity 120ms linear;
+  pointer-events: none;
+}
+
+.zoom.is-open {
+  opacity: 1;
+}
+
+.zoom__img {
+  display: block;
+  inline-size: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.zoom__foot {
+  padding: 0 1ch;
+  color: var(--fg-2);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

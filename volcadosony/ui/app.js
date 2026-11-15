@@ -19,6 +19,8 @@ const view = {
   api: null,
   jornadas: [],
   jornadaPorIndice: new Map(),
+  imagenes: new Map(),
+  zoomTimer: null,
   destino: "",
   existe: false,
   valido: false,
@@ -169,9 +171,28 @@ function formatearTamano(bytes) {
     : `${(bytes / GB).toFixed(1)} GB`;
 }
 
+function claveMiniatura(indice, cual) {
+  return `${indice}|${cual}`;
+}
+
+function crearMiniatura(jornada, cual, nombre) {
+  const miniatura = crear("figure", "thumb");
+  miniatura.tabIndex = 0;
+  miniatura.dataset.indice = String(jornada.indice);
+  miniatura.dataset.cual = cual;
+  miniatura.title = nombre;
+  miniatura.append(crear("span", "thumb__box", "…"));
+  miniatura.addEventListener("mouseenter", () => abrirZoom(miniatura));
+  miniatura.addEventListener("mouseleave", cerrarZoom);
+  miniatura.addEventListener("focus", () => abrirZoom(miniatura));
+  miniatura.addEventListener("blur", cerrarZoom);
+  return miniatura;
+}
+
 function pintarJornadas(jornadas) {
   view.jornadas = jornadas;
   view.jornadaPorIndice = new Map(jornadas.map((j) => [j.indice, j]));
+  view.imagenes = new Map();
   const contenedor = $("#days");
   contenedor.replaceChildren();
 
@@ -198,14 +219,100 @@ function pintarJornadas(jornadas) {
     const cuerpo = crear("span", "day__body");
     cuerpo.append(titulo, crear("span", "day__names", nombres.join("  ")));
 
+    const miniaturas = crear("div", "day__thumbs");
+    const cuales = Number(jornada.brutos) > 1
+      ? ["primero", "ultimo"]
+      : ["primero"];
+    for (const cual of cuales) {
+      const nombre = (cual === "primero" ? jornada.primero : jornada.ultimo) ?? "";
+      miniaturas.append(crearMiniatura(jornada, cual, nombre));
+    }
+
     const fila = crear("div", "day");
-    fila.append(etiqueta, cuerpo);
+    fila.append(etiqueta, cuerpo, miniaturas);
     contenedor.append(fila);
   }
 
   $("#all-days").checked = true;
   $("#all-days").indeterminate = false;
   pintarSeleccion();
+}
+
+function pintarMiniatura(evento) {
+  const miniatura = document.querySelector(
+    `.thumb[data-indice="${evento.indice}"][data-cual="${evento.cual}"]`);
+  if (!miniatura) return;
+
+  const nombre = typeof evento.nombre === "string" ? evento.nombre : "";
+  if (nombre) {
+    miniatura.title = nombre;
+  }
+  const clave = claveMiniatura(evento.indice, evento.cual);
+  const datos = typeof evento.datos === "string" ? evento.datos : "";
+  if (!datos.startsWith("data:image/jpeg;base64,")) {
+    view.imagenes.delete(clave);
+    miniatura.replaceChildren(crear("span", "thumb__none", "sin imagen"));
+    return;
+  }
+
+  view.imagenes.set(clave, { datos, nombre: nombre || miniatura.title });
+  const imagen = crear("img", "thumb__img");
+  imagen.src = datos;
+  imagen.alt = "";
+  miniatura.replaceChildren(imagen);
+}
+
+function posicionarZoom(miniatura) {
+  const zoom = $("#zoom");
+  const margen = 8;
+  const caja = miniatura.getBoundingClientRect();
+  zoom.style.insetBlockStart = "0px";
+  zoom.style.insetInlineStart = "0px";
+  const tamano = zoom.getBoundingClientRect();
+
+  let arriba = caja.bottom + margen;
+  if (arriba + tamano.height > window.innerHeight - margen) {
+    arriba = caja.top - margen - tamano.height;
+  }
+  arriba = Math.max(margen,
+    Math.min(arriba, window.innerHeight - tamano.height - margen));
+  let izquierda = caja.left;
+  izquierda = Math.max(margen,
+    Math.min(izquierda, window.innerWidth - tamano.width - margen));
+
+  zoom.style.insetBlockStart = `${arriba}px`;
+  zoom.style.insetInlineStart = `${izquierda}px`;
+}
+
+function abrirZoom(miniatura) {
+  const clave = claveMiniatura(miniatura.dataset.indice, miniatura.dataset.cual);
+  const imagen = view.imagenes.get(clave);
+  if (!imagen) return;
+
+  const zoom = $("#zoom");
+  clearTimeout(view.zoomTimer);
+  view.zoomTimer = null;
+  $("#zoom-img").src = imagen.datos;
+  const etiqueta = miniatura.dataset.cual === "primero"
+    ? "Primer clip"
+    : "Último clip";
+  $("#zoom-foot").textContent = `${etiqueta} · ${imagen.nombre}`;
+  zoom.hidden = false;
+  posicionarZoom(miniatura);
+  void zoom.offsetWidth;
+  zoom.classList.add("is-open");
+}
+
+function cerrarZoom() {
+  const zoom = $("#zoom");
+  if (zoom.hidden) return;
+  zoom.classList.remove("is-open");
+  const reducido = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  clearTimeout(view.zoomTimer);
+  view.zoomTimer = setTimeout(() => {
+    zoom.hidden = true;
+    view.zoomTimer = null;
+  }, reducido ? 0 : 120);
 }
 
 function indicesMarcados() {
@@ -504,6 +611,10 @@ function aplicar(evento) {
       revelar("sec-summary");
       break;
     }
+
+    case "miniatura":
+      pintarMiniatura(evento);
+      break;
 
     case "aviso":
       avisar(evento.texto);

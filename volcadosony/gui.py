@@ -8,6 +8,7 @@ Sin lógica de negocio: tarjetas, clips, jornadas, espacio y copia los decide
 hilos de trabajo, el diálogo nativo de carpeta y la cancelación al cerrar.
 """
 
+import base64
 import dataclasses
 import itertools
 import json
@@ -155,9 +156,30 @@ class Api:
                 "escritorio": str(nucleo.escritorio(self._avisar)),
                 "vacia": not clips,
             })
+            for jornada in jornadas:
+                self._emitir_miniaturas(jornada)
         except Exception as e:
             log.exception("Falló el escaneo de %s", origen)
             self._sin_tarjeta(f"No se pudo escanear la tarjeta {origen}: {e}")
+
+    def _emitir_miniaturas(self, jornada: nucleo.Jornada) -> None:
+        """Emite la miniatura del primer clip y, si hay más, del último."""
+        parejas = [("primero", jornada.clips[0])]
+        if len(jornada.clips) > 1:
+            parejas.append(("ultimo", jornada.clips[-1]))
+        for cual, clip in parejas:
+            datos = nucleo.miniatura(clip, self._avisar)
+            datos_url = None
+            if datos:
+                datos_url = ("data:image/jpeg;base64,"
+                             + base64.b64encode(datos).decode("ascii"))
+            self._emisor.emitir({
+                "type": "miniatura",
+                "indice": jornada.indice,
+                "cual": cual,
+                "nombre": clip.ruta.name,
+                "datos": datos_url,
+            })
 
     def _detectar(self) -> None:
         try:

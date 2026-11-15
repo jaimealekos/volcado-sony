@@ -128,6 +128,8 @@ def test_describir_jornada_corta_a_seis_nombres(tmp_path):
     assert d["fecha"] == "martes 5 de noviembre de 2024"
     assert d["detalle"] == "7 clips · 7 MB · 0 proxies"
     assert d["nombres"] == [f"C000{n}.MP4" for n in range(1, 7)]
+    assert d["primero"] == "C0001.MP4"
+    assert d["ultimo"] == "C0007.MP4"
     assert d["mas"] == 1
     assert d["peso"] == 7_000_000
     assert d["brutos"] == 7
@@ -369,6 +371,88 @@ def test_ruta_unidad_normaliza_la_letra():
 
 def test_ruta_unidad_respeta_una_ruta_completa():
     assert nucleo.ruta_unidad("tarjeta") == Path("tarjeta")
+
+
+# ----------------------- Criterio 7: miniaturas ---------------------------- #
+
+def crear_miniatura(origen, nombre, contenido=b"\xff\xd8\xff\xe0"):
+    carpeta = origen / "PRIVATE" / "M4ROOT" / "THMBNL"
+    carpeta.mkdir(parents=True, exist_ok=True)
+    ruta = carpeta / nombre
+    ruta.write_bytes(contenido)
+    return ruta
+
+
+def test_miniatura_lee_el_jpg_de_thmbnl(tmp_path):
+    origen = tarjeta_falsa(tmp_path)
+    crear_bruto(origen, "C0001.MP4", 10, mtime=ts(2024, 11, 5))
+    jpg = crear_miniatura(origen, "c0001t01.jpg", b"jpeg-falso")
+    clips, _ = nucleo.escanear(origen, lambda _: None)
+
+    avisos = []
+    datos = nucleo.miniatura(clips[0], avisos.append)
+
+    assert datos == jpg.read_bytes()
+    assert avisos == []
+
+
+def test_miniatura_sin_thmbnl_y_sin_ffmpeg_da_none(tmp_path, monkeypatch):
+    origen = tarjeta_falsa(tmp_path)
+    crear_bruto(origen, "C0001.MP4", 10, mtime=ts(2024, 11, 5))
+    clips, _ = nucleo.escanear(origen, lambda _: None)
+    monkeypatch.setattr(nucleo.shutil, "which", lambda _: None)
+
+    avisos = []
+    assert nucleo.miniatura(clips[0], avisos.append) is None
+    assert avisos == []
+
+
+def test_miniatura_sin_thmbnl_extrae_un_fotograma_con_ffmpeg(tmp_path, monkeypatch):
+    origen = tarjeta_falsa(tmp_path)
+    bruto = crear_bruto(origen, "C0001.MP4", 10, mtime=ts(2024, 11, 5))
+    clips, _ = nucleo.escanear(origen, lambda _: None)
+    monkeypatch.setattr(nucleo.shutil, "which", lambda _: "ffmpeg")
+
+    class Proceso:
+        returncode = 0
+        stdout = b"fotograma"
+        stderr = b""
+
+    llamadas = []
+
+    def run(argumentos, **opciones):
+        llamadas.append((argumentos, opciones))
+        return Proceso()
+
+    monkeypatch.setattr(nucleo.subprocess, "run", run)
+
+    avisos = []
+    assert nucleo.miniatura(clips[0], avisos.append) == b"fotograma"
+    assert avisos == []
+    argumentos, opciones = llamadas[0]
+    assert argumentos[:5] == ["ffmpeg", "-v", "error", "-ss", "0"]
+    assert str(bruto) in argumentos
+    assert opciones["timeout"] == nucleo.TIMEOUT_FFMPEG_S
+
+
+def test_miniatura_con_ffmpeg_que_falla_da_none_y_avisa(tmp_path, monkeypatch):
+    origen = tarjeta_falsa(tmp_path)
+    crear_bruto(origen, "C0001.MP4", 10, mtime=ts(2024, 11, 5))
+    clips, _ = nucleo.escanear(origen, lambda _: None)
+    monkeypatch.setattr(nucleo.shutil, "which", lambda _: "ffmpeg")
+
+    class Proceso:
+        returncode = 1
+        stdout = b""
+        stderr = b"bruto ilegible"
+
+    monkeypatch.setattr(nucleo.subprocess, "run", lambda *a, **k: Proceso())
+
+    avisos = []
+    assert nucleo.miniatura(clips[0], avisos.append) is None
+    assert len(avisos) == 1
+    assert "C0001.MP4" in avisos[0]
+    assert "bruto ilegible" in avisos[0]
 
 
 # --------------------------- Resto de interfaz ---------------------------- #

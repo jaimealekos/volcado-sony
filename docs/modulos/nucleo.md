@@ -3,8 +3,10 @@
 Lógica de `volcado_sony.py` v1.0.2 sin `rich`, sin `input()` y sin `print`. Se
 trasladan tal cual (mismo comportamiento y mismos textos de aviso): constantes de
 configuración, `gb`, `plural`, `fecha_bonita`, `sanear_nombre`, `Clip`,
-`buscar_insensible`, `escanear`, `copiar_archivo` (reescrita sin `Progress`),
-`nombre_proxy_destino`, `volcar` y el registro de `resumen_final`. `VERSION = "2.0.0"`.
+`buscar_insensible`, `escanear`, `miniatura`, `copiar_archivo` (reescrita sin
+`Progress`), `nombre_proxy_destino`, `volcar` y el registro de `resumen_final`.
+`VERSION = "2.0.0"`. Constantes de miniaturas: `CARPETA_MINIATURAS = "THMBNL"`,
+`SUFIJO_MINIATURA = "T01.JPG"` y `TIMEOUT_FFMPEG_S = 20`.
 
 ## Avisos
 
@@ -39,6 +41,18 @@ Windows, una letra sola o `X:` pasa a `X:\`.
 ```python
 def escanear(origen: Path, avisar) -> tuple[list[Clip], int]   # igual que v1
 
+def miniatura(clip: Clip, avisar) -> bytes | None
+```
+Primero busca el JPG de la cámara: `clip.ruta.parent.parent / CARPETA_MINIATURAS`
+(la carpeta `THMBNL` de la tarjeta) con `buscar_insensible`, nombre
+`clip.ruta.stem + SUFIJO_MINIATURA` (ej. `C4104T01.JPG` para `C4104.MP4`). Si
+existe, devuelve sus bytes. Si no, y `shutil.which("ffmpeg")` da una ruta, extrae
+un fotograma del bruto con `ffmpeg -v error -ss 0 -i <bruto> -frames:v 1
+-vf scale=640:-2 -f image2pipe -vcodec mjpeg -` (stdout; timeout
+`TIMEOUT_FFMPEG_S = 20`; en Windows `creationflags=subprocess.CREATE_NO_WINDOW`).
+Fallo de ffmpeg, timeout o de lectura: aviso con el motivo y `None`. Sin THMBNL y
+sin ffmpeg: `None` sin aviso.
+
 @dataclass
 class Jornada:
     indice: int            # 1..n, orden cronológico
@@ -61,9 +75,11 @@ clips tienen proxy", "huerfanos": "1 proxy sin bruto asociado (no se copiará)" 
 def describir_jornada(j: Jornada, total: int) -> dict
 ```
 `{"indice", "titulo": "Lote 1/3", "fecha": fecha_bonita, "detalle": "5 clips · 12.3
-GB · 5 proxies", "nombres": [hasta 6 nombres], "mas": nº restantes, "peso": bytes
-de los brutos, "brutos": nº de clips, "proxies": nº con proxy, "necesario": bytes
-de brutos más proxies}`. Mismos plurales que `elegir_lotes` de la v1.
+GB · 5 proxies", "nombres": [hasta 6 nombres], "mas": nº restantes, "primero":
+nombre del primer clip, "ultimo": nombre del último (iguales si solo hay uno),
+"peso": bytes de los brutos, "brutos": nº de clips, "proxies": nº con proxy,
+"necesario": bytes de brutos más proxies}`. Mismos plurales que `elegir_lotes` de
+la v1.
 
 ```python
 def espacio_necesario(seleccion) -> int     # brutos + proxies, como v1
@@ -118,3 +134,6 @@ devuelve su ruta; lanza `OSError` si falla.
 4. `volcar` con `cancelar` puesto lanza `Cancelado` y no deja ficheros `.part`.
 5. `resumen_final` y `guardar_registro` dan las filas y el fichero esperados.
 6. `ruta_unidad("e")`, `("E:")`, `("E:\\")` dan `E:\` en Windows.
+7. `miniatura` lee el JPG de `THMBNL` (búsqueda insensible); sin THMBNL y sin
+   ffmpeg da `None` sin aviso; un ffmpeg que falla da `None` y un aviso con el
+   motivo.

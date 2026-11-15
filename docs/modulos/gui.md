@@ -30,6 +30,7 @@ lista de eventos. De varios `progreso` seguidos solo queda el último. Tipos:
 | `sin_tarjeta` | `mensaje` | ninguna, o la ruta dada no es tarjeta |
 | `escaneando` | `ruta` | empieza el escaneo |
 | `tarjeta` | `ruta`, `resumen` (dict de `nucleo.resumen_tarjeta`), `jornadas` (lista de `describir_jornada`), `escritorio` (str), `vacia` (bool) | escaneo hecho |
+| `miniatura` | `indice`, `cual` (`"primero"` \| `"ultimo"`), `nombre`, `datos` (data URL JPEG o `null`) | tras `tarjeta`, una por el primer y el último clip de cada jornada (jornada de un clip: solo `primero`) |
 | `aviso` | `texto` | cualquier `avisar` del núcleo |
 | `progreso` | campos de `nucleo.Progreso` + `velocidad` (B/s del total copiado) y `eta` (s o null) | durante el volcado |
 | `error` | `texto` | error de copia |
@@ -107,11 +108,21 @@ contenido (no de la ventana), en este orden:
    (marcada al empezar):
    `☑ Lote 1/3 · lunes 3 de noviembre de 2026 · 5 clips · 12.3 GB · 5 proxies` con
    «Lote i/n» en magenta negrita y la fecha en negrita; segunda línea en `--dim` con
-   los nombres separados por dos espacios y «y N más...». Casillas dibujadas como
-   texto (`[x]`/`[ ]` en Iosevka, la casilla real oculta pero accesible por teclado
-   con foco visible). Pie: «Seleccionado: N brutos + M proxies · X» y botón
-   primario «Volcar» (magenta, texto oscuro), desactivado sin nombre de carpeta o
-   sin jornadas marcadas.
+    los nombres separados por dos espacios y «y N más...». Casillas dibujadas como
+    texto (`[x]`/`[ ]` en Iosevka, la casilla real oculta pero accesible por teclado
+    con foco visible). A la derecha, alineadas arriba y sin mover el texto, las
+    miniaturas del primer y del último clip: 16:9 de 8ch de ancho, separadas 1ch,
+    borde 1px `--line`, radio 2px; mientras llegan muestran «…» sobre `--bg-2`, y
+    con `datos` nulo «sin imagen» en `--dim` a 11px. Cada miniatura es focusable
+    (`tabindex=0`, `title` = nombre del clip); al pasar el ratón o al recibir foco
+    se amplía en una capa flotante (`position: fixed`, `z-index` alto, 56ch, imagen
+    16:9, borde `--cyan`, sombra) con pie «Primer clip · X» / «Último clip · X» en
+    `--fg-2`, colocada junto a la miniatura y siempre dentro de la ventana (encima
+    si no cabe debajo). Desaparece al salir el ratón o perder el foco; solo anima
+    la opacidad (120 ms, sin animación con `prefers-reduced-motion`). Pulsar una
+    miniatura no cambia la casilla de la jornada. Pie: «Seleccionado: N brutos +
+    M proxies · X» y botón primario «Volcar» (magenta, texto oscuro), desactivado
+    sin nombre de carpeta o sin jornadas marcadas.
 6. Si `preparar` no da ok: `✖` rojo con el mensaje y botones «Continuar de todas
    formas» / «Cancelar».
 7. Volcado: regla «Volcando N brutos + M proxies · X» (X = suma del campo
@@ -146,3 +157,6 @@ la vista. Teclado: Enter en los campos de destino = Volcar si está activo.
 5. El emisor deja solo el último `progreso` de una ráfaga y conserva el orden del
    resto.
 6. Comprobación manual de la sesión (no prueba): la vista con datos falsos.
+7. Tras `iniciar` con tarjeta falsa con `THMBNL`, llegan eventos `miniatura` con
+   data URL para el primero y el último de cada jornada; una jornada de un solo
+   clip solo emite `primero`.

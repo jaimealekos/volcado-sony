@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Pruebas de `volcadosony.gui`: `Api` y `Emisor` con ventana falsa, sin red ni ventana real."""
 
+import base64
 import json
 import os
 import threading
@@ -9,7 +10,15 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
+import pytest
+
 from volcadosony import gui, nucleo
+
+
+@pytest.fixture(autouse=True)
+def sin_ffmpeg(monkeypatch):
+    """Las pruebas no ejecutan ffmpeg real: sin THMBNL no hay miniatura."""
+    monkeypatch.setattr(nucleo.shutil, "which", lambda _: None)
 
 
 # ------------------------------- Utilidades ------------------------------- #
@@ -51,6 +60,19 @@ def esperar_evento(ventana, tipo, desde=0, limite=5.0):
                          f"{[e.get('type') for e in ventana.eventos()]}")
 
 
+def esperar_miniaturas(ventana, cantidad, limite=5.0):
+    """Espera a que lleguen al menos `cantidad` eventos `miniatura`."""
+    fin = time.monotonic() + limite
+    while time.monotonic() < fin:
+        miniaturas = [e for e in ventana.eventos()
+                      if e.get("type") == "miniatura"]
+        if len(miniaturas) >= cantidad:
+            return miniaturas
+        time.sleep(0.01)
+    raise AssertionError(f"No llegaron {cantidad} miniaturas; recibidos: "
+                         f"{[e.get('type') for e in ventana.eventos()]}")
+
+
 def tarjeta_falsa(tmp_path):
     origen = tmp_path / "tarjeta"
     (origen / "PRIVATE" / "M4ROOT" / "CLIP").mkdir(parents=True)
@@ -63,6 +85,14 @@ def crear_bruto(origen, nombre, tamano, mtime=None):
     ruta.write_bytes(b"\0" * tamano)
     if mtime is not None:
         os.utime(ruta, (mtime, mtime))
+    return ruta
+
+
+def crear_miniatura(origen, nombre, contenido):
+    carpeta = origen / "PRIVATE" / "M4ROOT" / "THMBNL"
+    carpeta.mkdir(parents=True, exist_ok=True)
+    ruta = carpeta / nombre
+    ruta.write_bytes(contenido)
     return ruta
 
 
@@ -204,6 +234,39 @@ def test_emisor_deja_el_ultimo_progreso_y_conserva_el_orden():
         {"type": "progreso", "total_hecho": 3},
         {"type": "fin", "ok": True},
     ]
+
+
+# ----------------------- Criterio 6: miniaturas ---------------------------- #
+
+def test_iniciar_emite_miniaturas_del_primero_y_el_ultimo(tmp_path):
+    tarjeta = tarjeta_falsa(tmp_path)
+    crear_bruto(tarjeta, "C0001.MP4", 10, mtime=ts(2024, 11, 5))
+    crear_bruto(tarjeta, "C0002.MP4", 10, mtime=ts(2024, 11, 5))
+    crear_bruto(tarjeta, "C0003.MP4", 10, mtime=ts(2024, 11, 6))
+    primero = crear_miniatura(tarjeta, "C0001T01.JPG", b"primero")
+    ultimo = crear_miniatura(tarjeta, "C0002T01.JPG", b"ultimo")
+    unico = crear_miniatura(tarjeta, "C0003T01.JPG", b"unico")
+
+    api, ventana = api_de_prueba(tmp_path, str(tarjeta))
+    try:
+        api.iniciar()
+        esperar_evento(ventana, "tarjeta")
+        esperar_miniaturas(ventana, 3)
+        time.sleep(0.3)
+        miniaturas = [e for e in ventana.eventos()
+                      if e.get("type") == "miniatura"]
+    finally:
+        api._al_cerrar()
+
+    assert [(m["indice"], m["cual"], m["nombre"]) for m in miniaturas] == [
+        (1, "primero", "C0001.MP4"),
+        (1, "ultimo", "C0002.MP4"),
+        (2, "primero", "C0003.MP4"),
+    ]
+    prefijo = "data:image/jpeg;base64,"
+    assert all(m["datos"].startswith(prefijo) for m in miniaturas)
+    assert [base64.b64decode(m["datos"][len(prefijo):]) for m in miniaturas] == [
+        primero.read_bytes(), ultimo.read_bytes(), unico.read_bytes()]
 
 
 # --------------------- Resto de la interfaz pública ----------------------- #

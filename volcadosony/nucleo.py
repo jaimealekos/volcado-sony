@@ -14,6 +14,7 @@ import os
 import re
 import shutil
 import string
+import subprocess
 import sys
 import threading
 import time
@@ -34,6 +35,9 @@ CARPETA_PROXIES = "Proxies"      # nombre de la subcarpeta de proxies
 SUFIJO_PROXY_ORIGEN = "S03"      # sufijo Sony del proxy
 SUFIJO_PROXY_DESTINO = "_Proxy"  # sufijo con el que se renombra al copiar
 MARGEN_ESPACIO = 1.02            # margen de seguridad al comprobar el espacio libre
+CARPETA_MINIATURAS = "THMBNL"    # subcarpeta de miniaturas de la tarjeta
+SUFIJO_MINIATURA = "T01.JPG"     # sufijo Sony de la miniatura del bruto
+TIMEOUT_FFMPEG_S = 20            # espera máxima al extraer un fotograma
 
 DIAS_ES = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
 MESES_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio",
@@ -221,6 +225,51 @@ def escanear(origen: Path,
     return sorted(brutos.values(), key=lambda c: c.ruta.name.lower()), huerfanos
 
 
+def miniatura(clip: Clip, avisar: Callable[[str], None]) -> bytes | None:
+    """Bytes JPEG de la miniatura del clip: la de la cámara o un fotograma.
+
+    Primero busca el JPG de THMBNL de la tarjeta; si no está y hay ffmpeg,
+    extrae un fotograma del bruto. Sin ninguna de las dos cosas devuelve
+    `None` sin avisar.
+    """
+    carpeta = clip.ruta.parent.parent / CARPETA_MINIATURAS
+    if carpeta.is_dir():
+        nombre = clip.ruta.stem + SUFIJO_MINIATURA
+        jpg = buscar_insensible(carpeta, nombre, avisar)
+        if jpg:
+            try:
+                return jpg.read_bytes()
+            except OSError as e:
+                avisar(f"No se pudo leer la miniatura {jpg.name}: {e}")
+                return None
+
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        return None
+    try:
+        proceso = subprocess.run(
+            [ffmpeg, "-v", "error", "-ss", "0", "-i", str(clip.ruta),
+             "-frames:v", "1", "-vf", "scale=640:-2", "-f", "image2pipe",
+             "-vcodec", "mjpeg", "-"],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=TIMEOUT_FFMPEG_S,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    except (OSError, subprocess.TimeoutExpired) as e:
+        avisar(f"No se pudo generar la miniatura de {clip.ruta.name}: {e}")
+        return None
+
+    if proceso.returncode != 0:
+        motivo = (proceso.stderr.decode("utf-8", "replace").strip()
+                  or f"ffmpeg terminó con código {proceso.returncode}")
+        avisar(f"No se pudo generar la miniatura de {clip.ruta.name}: {motivo}")
+        return None
+    if not proceso.stdout:
+        avisar(f"No se pudo generar la miniatura de {clip.ruta.name}: "
+               "ffmpeg no devolvió ningún fotograma")
+        return None
+    return proceso.stdout
+
+
 # ------------------------------- Jornadas --------------------------------- #
 
 @dataclass
@@ -282,6 +331,8 @@ def describir_jornada(j: Jornada, total: int) -> dict:
                     f"{plural(j.con_proxy, 'proxy' if j.con_proxy == 1 else 'proxie')}"),
         "nombres": [c.ruta.name for c in j.clips[:6]],
         "mas": len(j.clips) - 6 if len(j.clips) > 6 else 0,
+        "primero": j.clips[0].ruta.name,
+        "ultimo": j.clips[-1].ruta.name,
         "peso": j.peso,
         "brutos": len(j.clips),
         "proxies": j.con_proxy,
