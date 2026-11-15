@@ -99,7 +99,9 @@ contenido (no de la ventana), en este orden:
    [Examinar]`; debajo, en cuanto cambia algo (llamando a `revisar_destino`):
    verde «Destino: X» o amarillo «La carpeta X ya existe: se añadirá contenido
    (lo idéntico se omite).». El nombre solo se marca en rojo cuando el usuario lo
-   ha tocado y lo ha dejado vacío.
+   ha tocado y lo ha dejado vacío. Al pintar la sección tras `tarjeta`, el nombre
+   ya lleva la fecha local «AAAA.MM.DD - » (`nombrePorDefecto()`) y el cursor al
+   final; el usuario escribe detrás.
 5. Jornadas: regla «Selección por jornadas» (línea magenta con el texto en medio).
    Casilla maestra «Todas» (estado mixto `[-]`); una fila por jornada con casilla
    (marcada al empezar):

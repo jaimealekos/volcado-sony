@@ -248,6 +248,12 @@ function pintarSeleccion() {
 
 /* ------------------------------- Destino -------------------------------- */
 
+// Mismo formato que la v1: "AAAA.MM.DD - ", con la fecha local.
+function nombrePorDefecto(fecha = new Date()) {
+  const dos = (numero) => String(numero).padStart(2, "0");
+  return `${fecha.getFullYear()}.${dos(fecha.getMonth() + 1)}.${dos(fecha.getDate())} - `;
+}
+
 async function revisarDestino() {
   const respuesta = await llamar(
     "revisar_destino", $("#dest-name").value, $("#dest-path").value);
@@ -488,7 +494,9 @@ function aplicar(evento) {
       $("#sec-summary").hidden = false;
       $("#sec-dest").hidden = false;
       $("#sec-days").hidden = false;
-      $("#dest-name").value = "";
+      const nombre = $("#dest-name");
+      nombre.value = nombrePorDefecto();
+      nombre.setSelectionRange(nombre.value.length, nombre.value.length);
       $("#dest-path").value = "";
       $("#dest-path").placeholder = evento.escritorio || "Escritorio";
       view.nombreTocado = false;
