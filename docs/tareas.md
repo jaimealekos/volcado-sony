@@ -8,3 +8,6 @@
 
 ## 3 · 2026-11-15
 «Añade un botón de pausar cuando el programa esté volcando. Y una vez pausado, que se pueda detener manteniendo lo que ya está. O detener borrando lo ya hecho. Cada uno con su botón.»
+
+## 4 · 2026-11-15
+«Quita el iconito que precede al nombre de fichero que se está copiando. Pero trabájate algo realmente ingenioso y bonito y gráfico y visual para que vaya dentro de las barras que se van rellenando.»
