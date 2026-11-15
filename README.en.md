@@ -27,15 +27,21 @@ Everything happens in the same window, top to bottom:
 3. Asks for the destination folder **name** and its **path** (empty = Desktop;
    *Examinar* button to browse).
 4. **Shooting days** (recording date) are listed with checkboxes, all ticked
-   at start: untick the ones you don't want and press *Volcar*. If there is
+   at start, with a thumbnail of the first and last clip (enlarged on hover):
+   untick the ones you don't want and press *Volcar*. If there is
    not enough free space it warns you and lets you continue or cancel.
 5. Copies the camera originals batch by batch in chronological order; each
    original is followed by its camera metadata XML sidecar (into the `_xml\`
    subfolder) and its proxy (into the `Proxies\` subfolder, renaming the `S03`
    suffix to `_Proxy`, e.g. `C0001S03.MP4` → `C0001_Proxy.MP4`). Orphan
-   proxies (with no matching original) are skipped.
+   proxies (with no matching original) are skipped. *Pausar* pauses the copy;
+   while paused you can resume, stop keeping what was copied, or stop deleting
+   what this run copied.
 6. Writes a `volcado_YYYYMMDD_HHMMSS.txt` log in the destination with the
-   details of every file.
+   details of every file. When finished or stopped, *Salir* quits and
+   *Reiniciar* looks for the card again for another dump.
+
+![Enlarged shooting-day thumbnail](docs/captura-miniatura.jpg)
 
 ## Compatible cameras
 

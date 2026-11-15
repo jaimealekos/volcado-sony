@@ -613,15 +613,29 @@ function pintarResultado(evento) {
   caja.append(crear("p", falloRegistro ? "result__log result__log--err" : "result__log",
     evento.registro));
 
+  caja.append(accionesFinales());
+
+  $("#sec-result").hidden = false;
+  revelar("sec-result");
+}
+
+// Botones del final, tanto si el volcado terminó como si se detuvo.
+function accionesFinales() {
   const acciones = crear("div", "result__actions");
   const salir = crear("button", "btn btn--primary", "Salir");
   salir.type = "button";
   salir.addEventListener("click", () => llamar("salir"));
-  acciones.append(salir);
-  caja.append(acciones);
+  const reiniciar = crear("button", "btn", "Reiniciar");
+  reiniciar.type = "button";
+  reiniciar.addEventListener("click", reiniciarSesion);
+  acciones.append(salir, reiniciar);
+  return acciones;
+}
 
-  $("#sec-result").hidden = false;
-  revelar("sec-result");
+// Vuelve al principio: Python deja la sesión limpia y la página se recarga,
+// con lo que busca la tarjeta otra vez como al abrir.
+async function reiniciarSesion() {
+  if (await llamar("reiniciar") === true) location.reload();
 }
 
 function terminar(evento) {
@@ -647,12 +661,7 @@ function terminarDetenido(evento) {
   caja.className = "result result--detenido";
   caja.replaceChildren(crear("p", "result__log", linea));
 
-  const acciones = crear("div", "result__actions");
-  const salir = crear("button", "btn btn--primary", "Salir");
-  salir.type = "button";
-  salir.addEventListener("click", () => llamar("salir"));
-  acciones.append(salir);
-  caja.append(acciones);
+  caja.append(accionesFinales());
 
   $("#sec-result").hidden = false;
   revelar("sec-result");

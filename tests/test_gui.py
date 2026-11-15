@@ -440,6 +440,48 @@ def test_volcar_una_sola_vez_por_sesion(tmp_path):
     assert not (base / "Otra").exists()
 
 
+def test_reiniciar_permite_otro_volcado_tras_el_primero(tmp_path):
+    tarjeta = tarjeta_falsa(tmp_path)
+    crear_bruto(tarjeta, "C0001.MP4", 60, mtime=ts(2024, 11, 5))
+    api, ventana = api_de_prueba(tmp_path, str(tarjeta))
+    base = tmp_path / "base"
+    try:
+        api.iniciar()
+        esperar_evento(ventana, "tarjeta")
+        api.volcar("Copia", str(base), [1])
+        esperar_evento(ventana, "fin")
+        assert api.reiniciar() is True
+        desde = len(ventana.eventos())
+        api.iniciar()
+        esperar_evento(ventana, "tarjeta", desde=desde)
+        api.volcar("Otra", str(base), [1])
+        esperar_evento(ventana, "fin", desde=desde)
+    finally:
+        api._al_cerrar()
+
+    assert (base / "Copia" / "C0001.MP4").is_file()
+    assert (base / "Otra" / "C0001.MP4").is_file()
+
+
+def test_reiniciar_con_volcado_en_curso_da_error(tmp_path, monkeypatch):
+    tarjeta = tarjeta_falsa(tmp_path)
+    crear_bruto(tarjeta, "C0001.MP4", 60, mtime=ts(2024, 11, 5))
+    api, ventana = api_de_prueba(tmp_path, str(tarjeta))
+    libre = threading.Event()
+    monkeypatch.setattr(api, "_copiar", lambda *a: libre.wait(5))
+    try:
+        api.iniciar()
+        esperar_evento(ventana, "tarjeta")
+        api.volcar("Copia", str(tmp_path / "base"), [1])
+        desde = len(ventana.eventos())
+        assert api.reiniciar() is False
+        error = esperar_evento(ventana, "error", desde=desde)
+        assert "en curso" in error["texto"]
+    finally:
+        libre.set()
+        api._al_cerrar()
+
+
 def test_volcar_rechaza_nombre_vacio_y_seleccion_vacia(tmp_path):
     tarjeta = tarjeta_falsa(tmp_path)
     crear_bruto(tarjeta, "C0001.MP4", 60, mtime=ts(2024, 11, 5))

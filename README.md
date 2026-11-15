@@ -27,15 +27,20 @@ Todo ocurre en la misma ventana, de arriba abajo:
 3. Pide el **nombre** de la carpeta Destino y su **ruta** (vacía = Escritorio;
    botón *Examinar* para elegirla).
 4. Las **jornadas** (fecha de grabación) aparecen en líneas con casilla, todas
-   marcadas al empezar: desmarca las que no quieras volcar y pulsa *Volcar*.
+   marcadas al empezar, con la miniatura del primer y del último clip (se
+   amplía al pasar el ratón): desmarca las que no quieras volcar y pulsa *Volcar*.
    Si no hay espacio libre suficiente, avisa y deja continuar o cancelar.
 5. Copia los brutos por lotes en orden cronológico; cada bruto va seguido de
    su XML de metadatos de cámara (a la subcarpeta `_xml\`) y de su proxy (a
    la subcarpeta `Proxies\`, renombrando el sufijo `S03` por `_Proxy`, ej.
    `C0001S03.MP4` → `C0001_Proxy.MP4`). Los proxies sin bruto asociado no se
-   copian.
+   copian. *Pausar* detiene la copia; en pausa puedes reanudar, detener
+   conservando lo copiado o detener borrando lo copiado en ese volcado.
 6. Deja un registro `volcado_AAAAMMDD_HHMMSS.txt` en el Destino con el detalle
-   de cada fichero.
+   de cada fichero. Al acabar o detener, *Salir* cierra y *Reiniciar* vuelve a
+   buscar la tarjeta para otro volcado.
+
+![Miniatura ampliada de una jornada](docs/captura-miniatura.jpg)
 
 ## Cámaras compatibles
 

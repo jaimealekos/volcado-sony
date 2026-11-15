@@ -322,6 +322,24 @@ class Api:
             target=self._copiar, args=(seleccion, destino), daemon=True)
         self._hilo_volcado.start()
 
+    def reiniciar(self) -> bool:
+        """Deja la sesión como recién abierta para otro volcado.
+
+        Solo con el volcado ya terminado o detenido. La vista recarga la página
+        después, y su `iniciar` vuelve a buscar la tarjeta."""
+        with self._lock_volcado:
+            if self._hilo_volcado is not None and self._hilo_volcado.is_alive():
+                self._error("No se puede reiniciar con un volcado en curso.")
+                return False
+            self._volcado_iniciado = False
+            self._hilo_volcado = None
+        self._cancelar.clear()
+        self._pausa.clear()
+        self._modo_detener = None
+        self._jornadas = []
+        self._escaneo += 1
+        return True
+
     def pausar(self) -> None:
         """Pone en pausa el volcado en curso."""
         if not self._volcado_activo():

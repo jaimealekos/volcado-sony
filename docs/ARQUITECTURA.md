@@ -34,7 +34,9 @@ Dependencias: `entrada → gui → nucleo`. `nucleo` no importa nada de interfaz
 5. Volcado: tres barras (fichero, lote, total) con porcentaje, bytes, velocidad,
    tiempo y ETA; errores en rojo debajo.
 6. Resultado: mismo resumen que la versión de consola y registro `volcado_*.txt`
-   en el destino.
+   en el destino. Botones Salir y Reiniciar (también tras detener): Reiniciar
+   llama a `Api.reiniciar` (deja la sesión limpia; rechaza si hay volcado en
+   curso) y recarga la página, que vuelve a buscar la tarjeta.
 
 Orden de copia por clip: bruto → XML (`_xml/`) → proxy (`Proxies/`, `S03`→`_Proxy`),
 dentro de su lote de jornada, en orden cronológico. Sin cambios respecto a la v1.

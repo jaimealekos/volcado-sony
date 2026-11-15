@@ -9,4 +9,4 @@ Cola en orden de llegada. Se ejecuta entera cuando el usuario lo ordena; "hazlo 
 3. [x] 2026-11-15 — Botón Pausar durante el volcado; en pausa, botones «Detener y conservar lo copiado» y «Detener y borrar lo copiado».
 4. [x] 2026-11-15 — Quitar el icono delante del fichero en curso; diseñar algo ingenioso, bonito y visual dentro de las barras de progreso.
 5. [x] 2026-11-15 — Altura de ventana pensada para el volcado: al lanzar la copia no debe hacer falta scroll vertical.
-6. [ ] 2026-11-15 — Tras detener el volcado, además de Salir, botón para reiniciar.
+6. [x] 2026-11-15 — Tras detener el volcado, además de Salir, botón para reiniciar.
