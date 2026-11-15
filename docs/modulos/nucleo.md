@@ -135,7 +135,7 @@ devuelve `volcar`. Si se cancela, `volcar` adjunta a `Cancelado` los `resultados
 ```python
 def borrar_copiados(resultados, destino: Path, avisar) -> tuple[int, list[str]]
 ```
-Borra solo los `dst` con estado `"copiado"` (nunca los `"omitido"`: ya existían).
+Borra solo los `dst` con estado `"copiado"` (nunca los `"omitido"` ni los `"reemplazado"`: ya había un fichero con ese nombre antes del volcado).
 Después elimina `destino/_xml`, `destino/Proxies` y `destino` solo si quedan vacías
 (`rmdir`, nunca `rmtree`). Nunca toca nada fuera de `destino`: si un `dst` resuelto
 no está dentro del `destino` resuelto, lo deja, avisa y lo añade a los errores.

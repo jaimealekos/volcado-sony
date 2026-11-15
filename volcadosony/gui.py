@@ -128,6 +128,7 @@ class Api:
         self._emisor.arrancar()
 
         self._jornadas: list[nucleo.Jornada] = []
+        self._escaneo = 0  # sube con cada escaneo; las miniaturas de uno viejo se descartan
         self._cancelar = threading.Event()
         self._pausa = threading.Event()
         self._modo_detener: str | None = None
@@ -144,6 +145,8 @@ class Api:
         self._emisor.emitir({"type": "sin_tarjeta", "mensaje": mensaje})
 
     def _escanear_tarjeta(self, origen: Path) -> None:
+        self._escaneo += 1
+        escaneo = self._escaneo
         try:
             self._emisor.emitir({"type": "escaneando", "ruta": str(origen)})
             clips, huerfanos = nucleo.escanear(origen, self._avisar)
@@ -158,11 +161,18 @@ class Api:
                 "escritorio": str(nucleo.escritorio(self._avisar)),
                 "vacia": not clips,
             })
-            for jornada in jornadas:
-                self._emitir_miniaturas(jornada)
         except Exception as e:
             log.exception("Falló el escaneo de %s", origen)
             self._sin_tarjeta(f"No se pudo escanear la tarjeta {origen}: {e}")
+            return
+        try:
+            for jornada in jornadas:
+                if escaneo != self._escaneo:
+                    return
+                self._emitir_miniaturas(jornada)
+        except Exception as e:
+            log.exception("Fallaron las miniaturas de %s", origen)
+            self._avisar(f"No se pudieron sacar las miniaturas de {origen}: {e}")
 
     def _emitir_miniaturas(self, jornada: nucleo.Jornada) -> None:
         """Emite la miniatura del primer clip y, si hay más, del último."""
@@ -392,7 +402,8 @@ class Api:
             self._emisor.emitir({"type": "cancelado"})
             return
         if modo == "conservar":
-            copiados = sum(1 for r in e.resultados if r[3] == "copiado")
+            copiados = sum(1 for r in e.resultados
+                           if r[3] in ("copiado", "reemplazado"))
             self._emisor.emitir({
                 "type": "detenido",
                 "modo": "conservar",

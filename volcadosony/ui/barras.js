@@ -16,7 +16,7 @@ const Barras = (() => {
   const VACIO = "·";
   const MARCA_CADA = 10;        // una marca «╵» cada 10 caracteres de pista
   const FOTOGRAMAS_MAX = 48;    // fotogramas por jornada en la tira
-  const PREFIJO_IMAGEN = "data:image/jpeg;base64,";
+  const IMAGEN_VALIDA = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/;
 
   const tipos = ["bruto", "proxy", "xml"];
 
@@ -73,7 +73,7 @@ const Barras = (() => {
 
   function fotograma(datos) {
     const cuadro = crear("span", "film__frame");
-    if (datos && datos.startsWith(PREFIJO_IMAGEN)) {
+    if (datos && IMAGEN_VALIDA.test(datos)) {
       cuadro.style.backgroundImage = `url("${datos}")`;
     } else {
       cuadro.classList.add("film__frame--blank");

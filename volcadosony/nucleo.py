@@ -441,12 +441,16 @@ def copiar_archivo(src: Path, dst: Path, avisar: Callable[[str], None],
                    al_bloque: Callable[[int], None],
                    cancelar: threading.Event,
                    pausa: threading.Event) -> str:
-    """Copia con bloques. Devuelve 'copiado' | 'omitido'. Lanza ErrorCopia o Cancelado."""
+    """Copia con bloques. Lanza ErrorCopia o Cancelado.
+
+    Devuelve 'copiado', 'omitido' (ya estaba igual) o 'reemplazado' (había otro
+    fichero con ese nombre y distinto tamaño; «Detener y borrar» no lo toca)."""
     parcial = dst.with_suffix(dst.suffix + ".part")
     try:
         tamano = src.stat().st_size
 
-        if dst.exists() and dst.stat().st_size == tamano:
+        existia = dst.exists()
+        if existia and dst.stat().st_size == tamano:
             al_bloque(tamano)
             return "omitido"
 
@@ -467,7 +471,7 @@ def copiar_archivo(src: Path, dst: Path, avisar: Callable[[str], None],
             shutil.copystat(src, dst)
         except OSError as e:
             avisar(f"{dst.name} se copió, pero sin conservar la fecha original: {e}")
-        return "copiado"
+        return "reemplazado" if existia else "copiado"
     except OSError as e:
         raise ErrorCopia(f"{src.name}: {e}") from e
     finally:
@@ -643,7 +647,8 @@ def resumen_final(resultados, errores, segundos, destino: Path) -> dict:
     xmls = [r for r in resultados if r[2] == "xml"]
     omitidos = [r for r in resultados if r[3] == "omitido"]
     total_bytes = sum(r[0].stat().st_size for r in resultados)
-    copiados_bytes = sum(r[0].stat().st_size for r in resultados if r[3] == "copiado")
+    copiados_bytes = sum(r[0].stat().st_size for r in resultados
+                         if r[3] in ("copiado", "reemplazado"))
     velocidad = copiados_bytes / segundos / 1e6 if segundos > 0 else 0
 
     filas = [

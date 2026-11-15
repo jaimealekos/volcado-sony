@@ -361,6 +361,24 @@ def test_borrar_copiados_respeta_omitidos_y_carpetas_no_vacias(tmp_path):
     assert not (destino / "Proxies").exists()
 
 
+def test_copia_sobre_fichero_distinto_es_reemplazado_y_no_se_borra(tmp_path):
+    src = tmp_path / "C0001.MP4"
+    src.write_bytes(b"nuevo contenido")
+    destino = tmp_path / "destino"
+    destino.mkdir()
+    dst = destino / "C0001.MP4"
+    dst.write_bytes(b"viejo")
+
+    estado = nucleo.copiar_archivo(src, dst, lambda _: None, lambda _: None,
+                                   threading.Event(), threading.Event())
+    borrados, _ = nucleo.borrar_copiados([(src, dst, "bruto", estado)],
+                                         destino, lambda _: None)
+
+    assert estado == "reemplazado"
+    assert borrados == 0
+    assert dst.read_bytes() == b"nuevo contenido"
+
+
 def test_borrar_copiados_no_borra_nada_fuera_del_destino(tmp_path):
     destino = tmp_path / "destino"
     destino.mkdir()
