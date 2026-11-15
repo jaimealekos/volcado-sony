@@ -508,3 +508,63 @@ def test_al_cerrar_cancela_el_volcado_y_emite_cancelado(tmp_path, monkeypatch):
 
     assert cancelado["type"] == "cancelado"
     assert not api._hilo_volcado.is_alive()
+
+
+# ------------------------- Alto de ventana al volcar ----------------------- #
+
+class VentanaAjustable(VentanaFalsa):
+    def __init__(self):
+        super().__init__()
+        self.crecidas = []
+
+    def crecer(self, falta, alto_maximo, cima):
+        self.crecidas.append((falta, alto_maximo, cima))
+
+
+class VentanaReal:
+    """Imita lo que usa `_VentanaDiferida.crecer` de una ventana pywebview."""
+
+    def __init__(self, alto, y):
+        self.width, self.height, self.x, self.y = 1000, alto, 100, y
+
+    def resize(self, ancho, alto):
+        self.width, self.height = ancho, alto
+
+    def move(self, x, y):
+        self.x, self.y = x, y
+
+
+def test_ajustar_ventana_pasa_la_peticion_a_la_ventana():
+    ventana = VentanaAjustable()
+    api = gui.Api(None, ventana)
+    api.ajustar_ventana(254.0, 1392, 0)
+    assert ventana.crecidas == [(254, 1392, 0)]
+
+
+def test_ajustar_ventana_rechaza_valores_no_validos():
+    ventana = VentanaAjustable()
+    api = gui.Api(None, ventana)
+    api.ajustar_ventana(0, 1392, 0)
+    api.ajustar_ventana(100, 200, 0)
+    assert ventana.crecidas == []
+
+
+def test_crecer_suma_lo_que_falta_si_cabe_en_pantalla():
+    diferida = gui._VentanaDiferida()
+    diferida.real = VentanaReal(alto=820, y=50)
+    diferida.crecer(256, 1392, 0)
+    assert (diferida.real.height, diferida.real.y) == (1076, 50)
+
+
+def test_crecer_no_pasa_de_la_pantalla_y_sube_la_ventana():
+    diferida = gui._VentanaDiferida()
+    diferida.real = VentanaReal(alto=820, y=400)
+    diferida.crecer(900, 1392, 0)
+    assert (diferida.real.height, diferida.real.y) == (1392, 0)
+
+
+def test_crecer_sube_lo_justo_para_no_salirse_por_abajo():
+    diferida = gui._VentanaDiferida()
+    diferida.real = VentanaReal(alto=820, y=500)
+    diferida.crecer(256, 1392, 0)
+    assert (diferida.real.height, diferida.real.y) == (1076, 316)

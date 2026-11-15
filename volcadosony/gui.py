@@ -63,6 +63,18 @@ class _VentanaDiferida:
         if self.real is not None:
             self.real.destroy()
 
+    def crecer(self, falta: int, alto_maximo: int, cima: int) -> None:
+        """Suma `falta` px al alto sin pasar de `alto_maximo` y, si la ventana
+        se saldría por abajo, la sube (sin pasar de `cima`)."""
+        if self.real is None:
+            return
+        alto = min(self.real.height + falta, alto_maximo)
+        if alto <= self.real.height:
+            return
+        arriba = max(cima, min(self.real.y, cima + alto_maximo - alto))
+        self.real.resize(self.real.width, alto)
+        self.real.move(self.real.x, arriba)
+
 
 # ------------------------- Entrega de eventos a la vista ------------------ #
 
@@ -343,6 +355,17 @@ class Api:
 
     def salir(self) -> None:
         self._ventana.destroy()
+
+    def ajustar_ventana(self, falta: int, alto_maximo: int, cima: int) -> None:
+        """Hace crecer la ventana `falta` px para que el contenido quepa sin
+        scroll, dentro del área útil de la pantalla (`cima`, `alto_maximo`,
+        medidos por la vista). Solo la agranda."""
+        falta, alto_maximo, cima = int(falta), int(alto_maximo), int(cima)
+        if falta <= 0 or alto_maximo < TAMANO_MINIMO[1]:
+            self._error(f"Ajuste de ventana no válido: falta {falta} px, "
+                        f"alto máximo {alto_maximo} px.")
+            return
+        self._ventana.crecer(falta, alto_maximo, cima)
 
     # ----------------------------- Volcado --------------------------------- #
 

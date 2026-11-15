@@ -66,6 +66,13 @@ lista de eventos. De varios `progreso` seguidos solo queda el último. Tipos:
   `"borrar"` llama a `nucleo.borrar_copiados` y emite `detenido` con `borrados`,
   `errores`, `destino`, sin registro.
 - `salir()` → cierra la ventana.
+- `ajustar_ventana(falta, alto_maximo, cima)` → agranda la ventana `falta` px sin
+  pasar de `alto_maximo` (área útil de la pantalla, desde `cima`) y la sube si se
+  saldría por abajo; nunca la encoge. La vista lo pide desde que empieza el
+  volcado (al empezar y con un `ResizeObserver` sobre `body`) cuando
+  `scrollHeight > innerHeight`, para que barras, botones y resultado quepan sin
+  scroll. El alto final lo calcula Python con el alto real de la ventana: en
+  WebView2 `outerHeight` es el del control web, no el de la ventana.
 - Al cerrar la ventana (`events.closing`) con un volcado en marcha: se pone el
   `threading.Event` de cancelación y se espera al hilo (máx. 5 s); el núcleo borra
   el `.part`.

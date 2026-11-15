@@ -27,6 +27,7 @@ const view = {
   nombreTocado: false,
   pidiendo: false,
   volcando: false,
+  ajustarAlto: false,
   terminado: false,
   seccion: "sec-card",
   spinnerTimer: null,
@@ -66,6 +67,24 @@ async function llamar(metodo, ...args) {
     avisar(`No se pudo llamar a ${metodo}: ${error}`);
     return {};
   }
+}
+
+/* --------------------------- Alto de ventana ---------------------------- */
+
+// Desde que empieza el volcado, si el contenido no cabe, se pide a Python que
+// la ventana crezca lo que falta (dentro del área útil de la pantalla). El
+// cálculo del alto final va en Python: aquí outerHeight es el del control web,
+// no el de la ventana con su marco.
+function ajustarAltoVentana() {
+  if (!view.ajustarAlto) return;
+  const falta = Math.ceil(document.documentElement.scrollHeight - window.innerHeight);
+  if (falta <= 0) return;
+  llamar("ajustar_ventana", falta, screen.availHeight, screen.availTop ?? 0);
+}
+
+function vigilarAltoVentana() {
+  const observador = new ResizeObserver(() => ajustarAltoVentana());
+  observador.observe(document.body);
 }
 
 /* ------------------------------ Avisos --------------------------------- */
@@ -517,6 +536,7 @@ function jornadasPelicula(indices) {
 
 function empezarVolcado(nombre, ruta, indices) {
   view.volcando = true;
+  view.ajustarAlto = true;
   $("#sec-space").hidden = true;
   $("#sec-progress").hidden = false;
   const total = resumenSeleccion();
@@ -535,6 +555,7 @@ function empezarVolcado(nombre, ruta, indices) {
   bloquear(true);
   pintarSeleccion();
   revelar("sec-progress");
+  ajustarAltoVentana();
   llamar("volcar", nombre, ruta, indices);
 }
 
@@ -790,6 +811,7 @@ function conectarApi() {
 
 document.addEventListener("DOMContentLoaded", () => {
   conectarControles();
+  vigilarAltoVentana();
   conectarApi();
 });
 window.addEventListener("pywebviewready", conectarApi);
