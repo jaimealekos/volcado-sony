@@ -6,27 +6,29 @@
 ![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![MIT License](https://img.shields.io/badge/License-MIT-green)
 
-Offload **Sony camera** memory cards to your hard drive, in text mode with
-a polished console UI: colors, triple progress bars (current file, batch,
-total), transfer speed, elapsed time and ETA. The interface is in Spanish.
+Offload **Sony camera** memory cards to your hard drive, in a single window
+with a console look: triple progress bars (current file, batch, total),
+transfer speed, elapsed time and ETA. The interface is in Spanish.
 
 Works with **any Sony camera that records XAVC S / XAVC HS** — Alpha, ZV,
 RX, FX3/FX30, compacts and 4K Handycams — since they all share the same card
 structure. [Full list here](#compatible-cameras).
 
-![VolcadoSony screenshot](docs/captura.svg)
+![VolcadoSony screenshot](docs/captura.jpg)
 
 ## What it does
 
-1. Auto-detects the SD card (scans all drives for
-   `drive:\PRIVATE\M4ROOT\CLIP`). If several cards are present, it asks which
-   one to use.
-2. Asks for the **name** of the destination folder.
-3. Asks for the destination **path** (Enter = Windows Desktop).
-4. Asks whether to offload **everything** (Enter = yes, `n` = no).
-   - If you answer `n`, it groups the footage into **batches per shooting
-     day** (recording date) and offers each batch one by one. All selected
-     batches go to the same destination folder.
+Everything happens in the same window, top to bottom:
+
+1. Auto-detects the SD card (scans all drives for `PRIVATE\M4ROOT\CLIP`). If
+   several cards are present you pick one; if none is found you can type the
+   drive or search again.
+2. Shows the summary: originals, proxies, orphan proxies and shooting days.
+3. Asks for the destination folder **name** and its **path** (empty = Desktop;
+   *Examinar* button to browse).
+4. **Shooting days** (recording date) are listed with checkboxes, all ticked
+   at start: untick the ones you don't want and press *Volcar*. If there is
+   not enough free space it warns you and lets you continue or cancel.
 5. Copies the camera originals batch by batch in chronological order; each
    original is followed by its camera metadata XML sidecar (into the `_xml\`
    subfolder) and its proxy (into the `Proxies\` subfolder, renaming the `S03`
@@ -70,11 +72,11 @@ only record AVCHD/MP4 (A6000, A5100, original RX100s...) never create the
 Grab `VolcadoSony.exe` from the [**Releases**](../../releases) page. No
 installation, no dependencies: double-click with the card inserted.
 
-You can also run it from a console:
+It needs the Microsoft Edge WebView2 Runtime (built into Windows 11). The
+source drive can optionally be passed as an argument:
 
 ```
-VolcadoSony.exe            # auto-detects the card
-VolcadoSony.exe E:\        # force that drive as the source
+VolcadoSony.exe E:\        # use that drive as the source
 ```
 
 Or straight with Python:
@@ -102,18 +104,22 @@ python volcado_sony.py
 ## Building the .exe
 
 ```
-pip install rich pyinstaller
-pyinstaller --onefile --console --name VolcadoSony ^
-    --exclude-module numpy --exclude-module PIL ^
-    --exclude-module PyQt5 --exclude-module matplotlib --exclude-module IPython ^
-    volcado_sony.py
+pip install -r requirements.txt pyinstaller pytest
+powershell -NoProfile -ExecutionPolicy Bypass -File desplegar.ps1
 ```
 
-The executable lands in `dist\VolcadoSony.exe` (~11 MB, self-contained).
+`desplegar.ps1` runs the tests (`python -m pytest -q`), builds with
+`VolcadoSony.spec` and leaves `dist\VolcadoSony.exe`.
+
+## Mac
+
+The UI is HTML/CSS/JS on top of pywebview, which uses WebKit on macOS, so the
+same code should run there (`python volcado_sony.py`; cards are looked up in
+`/Volumes`). It has not been tested on a Mac and there is no Mac package.
 
 ## Configuration
 
-Constants at the top of `volcado_sony.py`:
+Constants at the top of `volcadosony/nucleo.py`:
 
 | Constant | Default | Meaning |
 |---|---|---|

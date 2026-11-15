@@ -2,6 +2,8 @@
 $ErrorActionPreference = 'Stop'
 $destino = 'C:\jaime\apps\volcado-sony'
 Set-Location $PSScriptRoot
+python -m pytest -q
+if ($LASTEXITCODE -ne 0) { throw 'Fallaron las pruebas: no se compila.' }
 python -m PyInstaller --noconfirm VolcadoSony.spec
 if ($LASTEXITCODE -ne 0) { throw 'Falló la compilación con PyInstaller: revisa la salida anterior.' }
 New-Item -ItemType Directory -Force $destino | Out-Null

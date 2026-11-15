@@ -8,3 +8,4 @@ __pycache__/
 # PyInstaller (el .exe se distribuye en GitHub Releases, no en el repo)
 build/
 dist/
+.pytest_cache/

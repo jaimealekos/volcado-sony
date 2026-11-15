@@ -6,26 +6,29 @@
 ![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![Licencia MIT](https://img.shields.io/badge/Licencia-MIT-green)
 
-Volcado de tarjetas de memoria de **cámaras Sony** al disco duro, en modo
-texto con una interfaz cuidada: colores, barras de progreso triples (fichero,
-lote, total), velocidad, tiempo transcurrido y ETA.
+Volcado de tarjetas de memoria de **cámaras Sony** al disco duro, en una sola
+ventana con estética de consola: barras de progreso triples (fichero, lote,
+total), velocidad, tiempo transcurrido y ETA.
 
 Funciona con **cualquier cámara Sony que grabe XAVC S / XAVC HS** — Alpha,
 ZV, RX, FX3/FX30, compactas y Handycam 4K — porque todas usan la misma
 estructura de tarjeta. [Lista completa aquí](#cámaras-compatibles).
 
-![Captura de VolcadoSony](docs/captura.svg)
+![Captura de VolcadoSony](docs/captura.jpg)
 
 ## Qué hace
 
-1. Detecta automáticamente la tarjeta SD (busca `unidad:\PRIVATE\M4ROOT\CLIP`
-   en todas las unidades). Si hay varias, pregunta cuál usar.
-2. Pregunta el **nombre** de la carpeta Destino.
-3. Pregunta la **ruta** de la carpeta Destino (Enter = Escritorio de Windows).
-4. Pregunta si quieres volcar **todo** (Enter = sí, `n` = no).
-   - Si respondes `n`, agrupa los brutos en **lotes por jornada** (fecha de
-     grabación) y va preguntando lote a lote. Todos los lotes seleccionados
-     van a la misma carpeta Destino.
+Todo ocurre en la misma ventana, de arriba abajo:
+
+1. Detecta automáticamente la tarjeta SD (busca `PRIVATE\M4ROOT\CLIP` en todas
+   las unidades). Si hay varias, eliges cuál; si no hay ninguna, puedes escribir
+   la unidad o buscar de nuevo.
+2. Muestra el resumen: brutos, proxies, proxies huérfanos y jornadas.
+3. Pide el **nombre** de la carpeta Destino y su **ruta** (vacía = Escritorio;
+   botón *Examinar* para elegirla).
+4. Las **jornadas** (fecha de grabación) aparecen en líneas con casilla, todas
+   marcadas al empezar: desmarca las que no quieras volcar y pulsa *Volcar*.
+   Si no hay espacio libre suficiente, avisa y deja continuar o cancelar.
 5. Copia los brutos por lotes en orden cronológico; cada bruto va seguido de
    su XML de metadatos de cámara (a la subcarpeta `_xml\`) y de su proxy (a
    la subcarpeta `Proxies\`, renombrando el sufijo `S03` por `_Proxy`, ej.
@@ -70,11 +73,11 @@ Descarga `VolcadoSony.exe` desde la página de
 [**Releases**](../../releases). No necesita instalación ni dependencias:
 doble clic con la tarjeta insertada y listo.
 
-También puedes ejecutarlo desde consola:
+Necesita Microsoft Edge WebView2 Runtime (viene de serie en Windows 11).
+Opcionalmente se le puede pasar la unidad de origen:
 
 ```
-VolcadoSony.exe            # detecta la tarjeta automáticamente
-VolcadoSony.exe E:\        # fuerza esa unidad como origen
+VolcadoSony.exe E:\        # usa esa unidad como origen
 ```
 
 O directamente con Python:
@@ -101,18 +104,22 @@ python volcado_sony.py
 ## Compilar el .exe
 
 ```
-pip install rich pyinstaller
-pyinstaller --onefile --console --name VolcadoSony ^
-    --exclude-module numpy --exclude-module PIL ^
-    --exclude-module PyQt5 --exclude-module matplotlib --exclude-module IPython ^
-    volcado_sony.py
+pip install -r requirements.txt pyinstaller pytest
+powershell -NoProfile -ExecutionPolicy Bypass -File desplegar.ps1
 ```
 
-El ejecutable queda en `dist\VolcadoSony.exe` (~11 MB, autónomo).
+`desplegar.ps1` pasa las pruebas (`python -m pytest -q`), compila con
+`VolcadoSony.spec` y deja `dist\VolcadoSony.exe`.
+
+## Mac
+
+La interfaz es HTML/CSS/JS sobre pywebview, que en macOS usa WebKit: el mismo
+código debería funcionar allí (`python volcado_sony.py`; la tarjeta se busca en
+`/Volumes`). No se ha probado en un Mac ni hay empaquetado para él.
 
 ## Configuración
 
-Constantes al principio de `volcado_sony.py`:
+Constantes al principio de `volcadosony/nucleo.py`:
 
 | Constante | Por defecto | Significado |
 |---|---|---|

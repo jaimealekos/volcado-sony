@@ -1,0 +1,706 @@
+/*
+ * VolcadoSony · hoja de estilo de la consola.
+ *
+ * Una sola columna de 96ch como máximo y el contenido desplazándose por dentro
+ * de la ventana. Todo se mide en ch y em; los únicos píxeles son los grosores
+ * de línea y el doble marco del banner. Sin ligaduras en la fuente.
+ */
+
+@font-face {
+  font-family: "Iosevka";
+  src: url("fonts/iosevka-latin-400-normal.woff2") format("woff2");
+  font-weight: 400;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Iosevka";
+  src: url("fonts/iosevka-latin-600-normal.woff2") format("woff2");
+  font-weight: 600;
+  font-display: block;
+}
+
+:root {
+  --bg: #0C0C10;
+  --bg-2: #15151C;
+  --bg-3: #1E1E28;
+  --line: #34344A;
+  --fg: #E6E6EE;
+  --fg-2: #A6A6B8;
+  --dim: #8A8AA3;
+  --magenta: #E879F9;
+  --cyan: #67E8F9;
+  --green: #4ADE80;
+  --yellow: #FACC15;
+  --red: #F87171;
+
+  --font: "Iosevka", "Cascadia Mono", Consolas, monospace;
+  --label: 36ch;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/22px var(--font);
+  font-feature-settings: "calt" 0;
+  font-synthesis: none;
+  text-size-adjust: none;
+}
+
+body {
+  margin: 0;
+  min-block-size: 100vh;
+  overflow-y: auto;
+}
+
+h1, h2, h3, p, ul, ol, dl, dd, dt {
+  margin: 0;
+  padding: 0;
+  font: inherit;
+}
+
+ul, ol {
+  list-style: none;
+}
+
+button, input {
+  font: inherit;
+  font-feature-settings: inherit;
+  color: inherit;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+::selection {
+  background: var(--magenta);
+  color: var(--bg);
+}
+
+/* ------------------------------- Ventana ------------------------------- */
+
+.app {
+  inline-size: min(100% - 4ch, 96ch);
+  margin-inline: auto;
+  padding-block: 2em 4em;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5em;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  min-inline-size: 0;
+}
+
+/* -------------------------------- Banner ------------------------------- */
+
+.banner {
+  position: relative;
+  border: 3px double var(--magenta);
+  padding: 1em 2ch 1.5em;
+  text-align: center;
+}
+
+.banner__title {
+  font-weight: 600;
+  color: #FFFFFF;
+  letter-spacing: 0.2em;
+}
+
+.banner__sub {
+  color: var(--cyan);
+}
+
+.banner__version {
+  position: absolute;
+  inset-block-end: -0.55em;
+  inset-inline-end: 2ch;
+  padding-inline: 1ch;
+  background: var(--bg);
+  color: var(--dim);
+}
+
+/* ------------------------------- Estados ------------------------------- */
+
+.status {
+  display: flex;
+  align-items: baseline;
+  gap: 1ch;
+  min-inline-size: 0;
+}
+
+.status__glyph {
+  flex: none;
+  min-inline-size: 1ch;
+  text-align: center;
+  color: var(--cyan);
+}
+
+.status--spin .status__glyph,
+.status--spin .status__text {
+  color: var(--cyan);
+}
+
+.status--ok .status__glyph {
+  color: var(--green);
+}
+
+.status--warn .status__glyph {
+  color: var(--yellow);
+}
+
+.status--err .status__glyph,
+.status--err .status__text {
+  color: var(--red);
+}
+
+.status--err .status__glyph {
+  font-weight: 600;
+}
+
+.note {
+  color: var(--green);
+}
+
+#dest-note {
+  margin-inline-start: calc(var(--label) + 2ch);
+}
+
+.note--warn {
+  color: var(--yellow);
+}
+
+.dim {
+  color: var(--dim);
+}
+
+.avisos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25em;
+}
+
+.aviso {
+  color: var(--yellow);
+  white-space: pre-wrap;
+}
+
+/* -------------------------------- Tarjetas ----------------------------- */
+
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25em;
+  padding-inline-start: 2ch;
+}
+
+.cards__row {
+  display: flex;
+  align-items: baseline;
+  gap: 2ch;
+}
+
+.cards__path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --------------------------------- Filas ------------------------------- */
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 2ch;
+  min-inline-size: 0;
+}
+
+.row__label {
+  flex: none;
+  inline-size: var(--label);
+  white-space: nowrap;
+}
+
+.row--manual {
+  flex-wrap: nowrap;
+}
+
+.field {
+  flex: 1 1 0;
+  min-inline-size: 0;
+  block-size: 1.6em;
+  padding: 0 1ch;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--bg-2);
+  color: var(--fg);
+  caret-color: var(--magenta);
+  outline: none;
+}
+
+.field::placeholder {
+  color: var(--dim);
+  opacity: 1;
+}
+
+.field:hover:not(:disabled) {
+  background: var(--bg-3);
+}
+
+.field:focus-visible {
+  border-color: var(--magenta);
+}
+
+.field:disabled {
+  color: var(--dim);
+  background: none;
+  cursor: default;
+}
+
+.field[aria-invalid="true"] {
+  border-color: var(--red);
+}
+
+/* -------------------------------- Botones ------------------------------ */
+
+.btn {
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--fg);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.btn::before {
+  content: "[ ";
+  color: var(--dim);
+}
+
+.btn::after {
+  content: " ]";
+  color: var(--dim);
+}
+
+.btn:hover:not(:disabled) {
+  color: var(--magenta);
+}
+
+.btn:hover:not(:disabled)::before,
+.btn:hover:not(:disabled)::after {
+  color: var(--magenta);
+}
+
+.btn:focus-visible {
+  outline: 1px solid var(--magenta);
+  outline-offset: -1px;
+  color: var(--magenta);
+}
+
+.btn:disabled {
+  color: var(--dim);
+  cursor: default;
+}
+
+.btn--primary {
+  padding: 0 2ch;
+  background: var(--magenta);
+  color: var(--bg);
+  font-weight: 600;
+}
+
+.btn--primary::before,
+.btn--primary::after {
+  content: "";
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: #F0A6FB;
+  color: var(--bg);
+}
+
+.btn--primary:focus-visible {
+  outline: 1px solid var(--fg);
+  color: var(--bg);
+}
+
+.btn--primary:disabled {
+  background: var(--line);
+  color: var(--dim);
+}
+
+/* ------------------------------- Resumen ------------------------------- */
+
+.summary {
+  inline-size: 100%;
+  border: 1px solid var(--cyan);
+  border-radius: 6px;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  padding: 0.5em 1ch;
+}
+
+.summary th {
+  inline-size: 18ch;
+  padding: 0 2ch 0 1ch;
+  text-align: start;
+  font-weight: 600;
+  white-space: nowrap;
+  vertical-align: top;
+}
+
+.summary td {
+  padding: 0 1ch;
+  color: var(--fg);
+  vertical-align: top;
+}
+
+.summary .is-warn {
+  color: var(--yellow);
+}
+
+.summary .is-dim {
+  color: var(--dim);
+}
+
+/* -------------------------------- Reglas ------------------------------- */
+
+.rule {
+  display: flex;
+  align-items: center;
+  gap: 1ch;
+  color: var(--magenta);
+  font-weight: 600;
+}
+
+.rule::before,
+.rule::after {
+  content: "";
+  flex: 1 1 0;
+  border-block-start: 1px solid var(--magenta);
+}
+
+.rule span {
+  flex: none;
+  max-inline-size: 72ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* -------------------------------- Casillas ----------------------------- */
+
+.check {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1ch;
+  inline-size: fit-content;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.check input {
+  appearance: none;
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  margin: 0;
+  cursor: inherit;
+  outline: none;
+}
+
+.check__box {
+  color: var(--dim);
+  pointer-events: none;
+}
+
+.check__box::before {
+  content: "[ ]";
+}
+
+.check:has(input:checked) .check__box {
+  color: var(--green);
+}
+
+.check:has(input:checked) .check__box::before {
+  content: "[x]";
+}
+
+.check:has(input:indeterminate) .check__box {
+  color: var(--yellow);
+}
+
+.check:has(input:indeterminate) .check__box::before {
+  content: "[-]";
+}
+
+.check:has(input:focus-visible) {
+  outline: 1px solid var(--magenta);
+  outline-offset: 1px;
+}
+
+.check:has(input:disabled) {
+  color: var(--dim);
+  cursor: default;
+}
+
+/* ------------------------------- Jornadas ------------------------------ */
+
+.days {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  margin-block-start: 0.5em;
+}
+
+.day {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 1ch;
+  align-items: start;
+}
+
+.day__body {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.day__title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.day__lote {
+  color: var(--magenta);
+  font-weight: 600;
+}
+
+.day__date {
+  font-weight: 600;
+}
+
+.day__names {
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* -------------------------------- Acciones ----------------------------- */
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2ch;
+  margin-block-start: 0.5em;
+}
+
+.actions--right {
+  justify-content: flex-end;
+}
+
+.selection {
+  color: var(--fg-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* -------------------------------- Volcado ------------------------------ */
+
+.bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35em;
+  margin-block-start: 0.5em;
+  container-type: inline-size;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: 24ch minmax(12ch, 1fr) 50ch;
+  column-gap: 1ch;
+  align-items: baseline;
+}
+
+.bar-label {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--cyan);
+  font-weight: 600;
+}
+
+.bar {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  white-space: pre;
+  user-select: none;
+}
+
+.bar__done {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  overflow: hidden;
+  color: var(--magenta);
+}
+
+.bar--full .bar__done {
+  color: var(--green);
+}
+
+.bar__rest {
+  display: block;
+  overflow: hidden;
+  color: var(--line);
+}
+
+.bar-meta {
+  display: flex;
+  gap: 1ch;
+  color: var(--fg-2);
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.bar-meta > span {
+  flex: none;
+}
+
+/* Si los datos no caben a la derecha, pasan a una segunda línea bajo la barra. */
+@container (max-width: 90ch) {
+  .bar-row {
+    grid-template-columns: 24ch minmax(12ch, 1fr);
+  }
+
+  .bar-meta {
+    grid-column: 2;
+    grid-row: 2;
+  }
+}
+
+.errors {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25em;
+  margin-block-start: 0.5em;
+  color: var(--red);
+}
+
+/* -------------------------------- Resultado ---------------------------- */
+
+.result {
+  border: 3px double var(--green);
+  padding: 1em 2ch;
+}
+
+.result--err {
+  border-color: var(--red);
+}
+
+.result__title {
+  margin: -1.5em auto 1em;
+  inline-size: fit-content;
+  padding: 0 2ch;
+  background: var(--bg);
+  color: #FFFFFF;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.result--ok .result__title {
+  background: var(--green);
+}
+
+.result--err .result__title {
+  background: var(--red);
+}
+
+.result__errors {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25em;
+  margin-block-end: 1em;
+  color: var(--red);
+}
+
+.result__table {
+  inline-size: 100%;
+  border: 1px solid var(--green);
+  border-radius: 6px;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  padding: 0.5em 1ch;
+}
+
+.result--err .result__table {
+  border-color: var(--red);
+}
+
+.result__table th {
+  inline-size: 18ch;
+  padding: 0 2ch 0 1ch;
+  text-align: start;
+  font-weight: 600;
+  white-space: nowrap;
+  vertical-align: top;
+}
+
+.result__table td {
+  padding: 0 1ch;
+  vertical-align: top;
+}
+
+.result__log {
+  margin-block-start: 0.5em;
+  color: var(--dim);
+  overflow-wrap: anywhere;
+}
+
+.result__log--err {
+  color: var(--red);
+}
+
+.result__actions {
+  margin-block-start: 1em;
+}
+
+/* --------------------------- Preferencias ------------------------------ */
+
+@media (max-width: 900px) {
+  :root {
+    --label: 28ch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

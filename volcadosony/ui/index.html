@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VolcadoSony</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <main class="app">
+
+    <header class="banner">
+      <p class="banner__title">VOLCADO SONY</p>
+      <p class="banner__sub">Volcado de brutos y proxies de tarjeta SD al disco duro</p>
+      <span class="banner__version">v2.0.0</span>
+    </header>
+
+    <section class="section" id="sec-card" aria-live="polite">
+      <p class="status" id="card-status" hidden></p>
+      <div class="cards" id="card-list" hidden></div>
+      <div class="row row--manual" id="card-manual" hidden>
+        <label class="row__label" for="card-input">▸ Unidad de la tarjeta</label>
+        <input class="field" id="card-input" type="text" placeholder="E:" spellcheck="false">
+        <button class="btn" id="card-use" type="button">Usar</button>
+        <button class="btn" id="card-search" type="button">Buscar de nuevo</button>
+      </div>
+      <div class="avisos" id="avisos-card"></div>
+    </section>
+
+    <section class="section" id="sec-summary" hidden>
+      <table class="summary" id="summary" aria-label="Resumen de la tarjeta"></table>
+      <div class="avisos" id="avisos-summary"></div>
+    </section>
+
+    <section class="section" id="sec-dest" hidden>
+      <div class="row">
+        <label class="row__label" for="dest-name">▸ Nombre de la carpeta Destino</label>
+        <input class="field" id="dest-name" type="text" spellcheck="false">
+      </div>
+      <div class="row">
+        <label class="row__label" for="dest-path">▸ Ruta para la carpeta Destino</label>
+        <input class="field" id="dest-path" type="text" placeholder="Escritorio" spellcheck="false">
+        <button class="btn" id="dest-browse" type="button">Examinar</button>
+      </div>
+      <p class="note" id="dest-note" hidden></p>
+      <div class="avisos" id="avisos-dest"></div>
+    </section>
+
+    <section class="section" id="sec-days" hidden>
+      <div class="rule"><span>Selección por jornadas</span></div>
+      <label class="check">
+        <input type="checkbox" id="all-days">
+        <span class="check__box" aria-hidden="true"></span>Todas
+      </label>
+      <div class="days" id="days"></div>
+      <div class="avisos" id="avisos-days"></div>
+      <footer class="actions">
+        <p class="selection" id="selection"></p>
+        <button class="btn btn--primary" id="btn-dump" type="button" disabled>Volcar</button>
+      </footer>
+    </section>
+
+    <section class="section" id="sec-space" hidden>
+      <p class="status status--err" id="space-text"></p>
+      <div class="actions actions--right">
+        <button class="btn" id="space-continue" type="button">Continuar de todas formas</button>
+        <button class="btn" id="space-cancel" type="button">Cancelar</button>
+      </div>
+    </section>
+
+    <section class="section" id="sec-progress" hidden>
+      <div class="rule" id="progress-rule"></div>
+      <div class="bars">
+        <div class="bar-row">
+          <span class="bar-label" id="pr-file-label"></span>
+          <span class="bar"><span class="bar__done" id="pr-file-done"></span><span class="bar__rest" id="pr-file-rest"></span></span>
+          <span class="bar-meta">
+            <span id="pr-file-pct"></span>
+            <span id="pr-file-bytes"></span>
+            <span id="pr-file-speed"></span>
+            <span class="dim" id="pr-file-sep">•</span>
+            <span id="pr-file-time"></span>
+            <span id="pr-file-eta"></span>
+          </span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label" id="pr-lote-label"></span>
+          <span class="bar"><span class="bar__done" id="pr-lote-done"></span><span class="bar__rest" id="pr-lote-rest"></span></span>
+          <span class="bar-meta">
+            <span id="pr-lote-pct"></span>
+            <span id="pr-lote-bytes"></span>
+            <span id="pr-lote-speed"></span>
+            <span class="dim" id="pr-lote-sep">•</span>
+            <span id="pr-lote-time"></span>
+            <span id="pr-lote-eta"></span>
+          </span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label" id="pr-total-label"></span>
+          <span class="bar"><span class="bar__done" id="pr-total-done"></span><span class="bar__rest" id="pr-total-rest"></span></span>
+          <span class="bar-meta">
+            <span id="pr-total-pct"></span>
+            <span id="pr-total-bytes"></span>
+            <span id="pr-total-speed"></span>
+            <span class="dim" id="pr-total-sep">•</span>
+            <span id="pr-total-time"></span>
+            <span id="pr-total-eta"></span>
+          </span>
+        </div>
+      </div>
+      <div class="errors" id="errors" hidden></div>
+      <div class="avisos" id="avisos-progress"></div>
+    </section>
+
+    <section class="section" id="sec-result" hidden>
+      <div class="result" id="result"></div>
+    </section>
+
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

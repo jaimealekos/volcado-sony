@@ -1,5 +1,8 @@
 # Ejecución
-rich>=13.0
+pywebview==6.2.1
 
 # Solo para compilar el .exe
 # pyinstaller>=6.0
+
+# Solo para las pruebas
+# pytest>=8.0
