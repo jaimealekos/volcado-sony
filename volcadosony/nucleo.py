@@ -399,7 +399,7 @@ class Progreso:
 
 
 class _PausaContada:
-    """Evento de pausa que acumula el tiempo que se pasa esperándolo."""
+    """Evento de pausa que acumula el tiempo pasado en `esperar_pausa`."""
 
     def __init__(self, evento: threading.Event) -> None:
         self._evento = evento
@@ -408,11 +408,6 @@ class _PausaContada:
     def is_set(self) -> bool:
         return self._evento.is_set()
 
-    def wait(self, timeout: float | None = None) -> bool:
-        inicio = time.monotonic()
-        resultado = self._evento.wait(timeout)
-        self.pausado += time.monotonic() - inicio
-        return resultado
 
 
 def esperar_pausa(pausa: threading.Event, cancelar: threading.Event) -> float:
@@ -436,7 +431,9 @@ def _esperar_si_pausa(pausa: threading.Event, cancelar: threading.Event,
     if not pausa.is_set():
         return
     notificar()
-    esperar_pausa(pausa, cancelar)
+    segundos = esperar_pausa(pausa, cancelar)
+    if isinstance(pausa, _PausaContada):
+        pausa.pausado += segundos
     notificar()
 
 
