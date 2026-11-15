@@ -1,0 +1,189 @@
+/* Barras de progreso: bloques de consola (fichero, lote) y tira de película
+   (total). Ver barras.js. */
+
+:root {
+  --film-alto: 3.4em;          /* alto total de la tira */
+  --film-perforacion: 0.42em;  /* banda de perforaciones arriba y abajo */
+  --film-paso: 14px;           /* distancia entre perforaciones */
+  --film-hueco: 2px;           /* línea negra entre fotogramas */
+  --film-avance: 0.6s;         /* una perforación por ciclo al rodar */
+  --cabezal-parpadeo: 1s;
+}
+
+/* ------------------------------ Bloques -------------------------------- */
+
+.blocks {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  white-space: pre;
+  user-select: none;
+}
+
+.blocks__probe {
+  position: absolute;
+  visibility: hidden;
+}
+
+.blocks__done {
+  color: var(--magenta);
+  background: linear-gradient(90deg, var(--magenta) 0 42%, #fff 50%,
+    var(--magenta) 58% 100%) 0 0 / 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: blocks-brillo 2.4s linear infinite;
+}
+
+.blocks__head {
+  color: #fff;
+  text-shadow: 0 0 6px var(--magenta), 0 0 12px var(--magenta);
+  animation: blocks-cabezal var(--cabezal-parpadeo) steps(1) infinite;
+}
+
+.blocks__rest {
+  color: var(--line);
+}
+
+/* El color del fichero en curso dice qué se copia. */
+.blocks--proxy .blocks__done {
+  background-image: linear-gradient(90deg, var(--cyan) 0 42%, #fff 50%,
+    var(--cyan) 58% 100%);
+}
+.blocks--proxy .blocks__head { text-shadow: 0 0 6px var(--cyan), 0 0 12px var(--cyan); }
+.blocks--xml .blocks__done {
+  background-image: linear-gradient(90deg, var(--dim) 0 42%, var(--fg) 50%,
+    var(--dim) 58% 100%);
+}
+.blocks--xml .blocks__head { text-shadow: none; }
+
+.blocks.bar--full .blocks__done {
+  background: none;
+  -webkit-text-fill-color: var(--green);
+  animation: none;
+}
+
+@keyframes blocks-brillo {
+  from { background-position: 100% 0; }
+  to { background-position: 0 0; }
+}
+
+@keyframes blocks-cabezal {
+  50% { opacity: 0.25; }
+}
+
+/* --------------------------- Tira de película --------------------------- */
+
+.film {
+  position: relative;
+  display: block;
+  block-size: var(--film-alto);
+  overflow: hidden;
+  border-radius: 2px;
+  background: #050507;
+  user-select: none;
+}
+
+/* Perforaciones arriba y abajo; ruedan mientras se copia. */
+.film::before,
+.film::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  block-size: var(--film-perforacion);
+  z-index: 3;
+  background: linear-gradient(90deg, transparent 0 4px, var(--bg-3) 4px 10px,
+    transparent 10px) 0 50% / var(--film-paso) 55% repeat-x;
+  animation: film-rueda var(--film-avance) linear infinite;
+}
+.film::before { inset-block-start: 0; }
+.film::after { inset-block-end: 0; }
+
+.film__strip {
+  position: absolute;
+  inset-inline: 0;
+  inset-block: var(--film-perforacion);
+  display: flex;
+  gap: var(--film-hueco);
+}
+
+.film__day {
+  display: flex;
+  gap: var(--film-hueco);
+  overflow: hidden;
+  min-inline-size: 0;
+  flex-grow: 0;
+  flex-shrink: 0;
+  border-inline-end: 1px solid var(--line);
+}
+.film__day:last-child { border-inline-end: 0; }
+
+.film__frame {
+  flex: none;
+  block-size: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--bg-3) center / cover no-repeat;
+}
+.film__frame--blank {
+  background-image: repeating-linear-gradient(135deg,
+    var(--bg-3) 0 3px, var(--bg-2) 3px 6px);
+}
+
+/* Lo pendiente, en negativo de color (máscara anaranjada). */
+.film__strip--neg {
+  filter: invert(1) sepia(0.85) saturate(1.8) hue-rotate(-12deg) brightness(0.5);
+}
+
+/* Lo copiado, revelado. */
+.film__strip--pos {
+  clip-path: inset(0 100% 0 0);
+  filter: saturate(1.1);
+}
+
+/* Ventanilla de luz en el borde de avance. */
+.film__gate {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  inline-size: 2px;
+  z-index: 4;
+  transform: translateX(-1px);
+  background: var(--cyan);
+  box-shadow: 0 0 8px 2px var(--cyan), -18px 0 24px 2px rgb(103 232 249 / 0.25);
+}
+
+.film--idle .film__gate,
+.film.bar--full .film__gate { display: none; }
+
+.film.bar--full::before,
+.film.bar--full::after,
+.film--idle::before,
+.film--idle::after { animation: none; }
+
+.film.bar--full {
+  box-shadow: 0 0 0 1px var(--green);
+}
+
+@keyframes film-rueda {
+  from { background-position: 0 50%; }
+  to { background-position: calc(-1 * var(--film-paso)) 50%; }
+}
+
+/* En pausa (tarea 3: #sec-progress.is-paused) todo se queda quieto. */
+.is-paused .film::before,
+.is-paused .film::after,
+.is-paused .blocks__done,
+.is-paused .blocks__head { animation-play-state: paused; }
+.is-paused .film__gate { background: var(--yellow); box-shadow: 0 0 8px 2px var(--yellow); }
+
+@media (prefers-reduced-motion: reduce) {
+  .film::before,
+  .film::after,
+  .blocks__done,
+  .blocks__head { animation: none; }
+}
+
+/* La tira es más alta que una línea: centra su rótulo con ella. */
+.bar-row:has(.film) > .bar-label {
+  align-self: center;
+}

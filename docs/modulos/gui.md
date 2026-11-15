@@ -73,7 +73,7 @@ lista de eventos. De varios `progreso` seguidos solo queda el último. Tipos:
 Velocidad y ETA: `velocidad = total_hecho / segundos`; `eta =
 (total_total - total_hecho) / velocidad` o `null` si no hay velocidad.
 
-## Vista (`ui/index.html`, `ui/app.css`, `ui/app.js`, `ui/fonts/`)
+## Vista (`ui/index.html`, `ui/app.css`, `ui/app.js`, `ui/barras.js`, `ui/barras.css`, `ui/fonts/`)
 
 Fuente: copiar `iosevka-latin-400-normal.woff2`, `iosevka-latin-600-normal.woff2` y
 `OFL-iosevka.txt` de `F:\code\github\joseante\assets\ui\fonts\`. `font: 15px/22px
@@ -136,12 +136,23 @@ contenido (no de la ventana), en este orden:
 6. Si `preparar` no da ok: `✖` rojo con el mensaje y botones «Continuar de todas
    formas» / «Cancelar».
 7. Volcado: regla «Volcando N brutos + M proxies · X» (X = suma del campo
-   numérico `necesario` de las jornadas marcadas); tres filas de barra (fichero con
-   icono 🎬/🎞/📄 y nombre; lote; «TOTAL k/n»): rejilla `etiqueta 24ch | barra
-   flexible (mínimo 12ch) | datos`; rótulo cyan negrita (recorta con …), barra de
-   bloques de texto `█` magenta sobre `░` `--line` (verde al 100 %). Los datos van
-   `white-space: nowrap` y sin cortar; si no caben, pasan a una segunda línea bajo
-   la barra. En fichero y lote solo `%`, `X/Y GB` y `h:mm:ss` transcurrido; en TOTAL
+   numérico `necesario` de las jornadas marcadas); tres filas de barra (nombre del fichero sin
+   icono; lote; «TOTAL k/n»): rejilla `etiqueta 24ch | barra flexible`, con los
+   datos siempre en una segunda línea bajo la barra; rótulo cyan negrita (recorta
+   con …). Las barras las pinta `ui/barras.js` (`Barras.montar(jornadas)` al
+   empezar, `Barras.pintar(prefijo, fraccion, tipo)` en cada progreso) con
+   `ui/barras.css`:
+   - Fichero y lote: bloques de consola con resolución de octavos (`▏…▉█`) sobre
+     una pista `·` con marca `╵` cada 10 caracteres, brillo que recorre lo hecho y
+     cabezal `▌` que parpadea en el borde. Color del fichero según lo que se copia:
+     bruto magenta, proxy cyan, XML gris. Verde al 100 %.
+   - Total: tira de película con las miniaturas de las jornadas marcadas; cada
+     jornada ocupa lo que pesa (`necesario`). Lo pendiente se ve en negativo
+     anaranjado y lo copiado revelado; una ventanilla de luz cyan marca el avance y
+     las perforaciones ruedan mientras se copia. En pausa todo se para y la
+     ventanilla pasa a amarillo; al 100 %, borde verde. Sin miniatura, fotograma
+     rayado. Animaciones desactivadas con `prefers-reduced-motion`.
+   En fichero y lote solo `%`, `X/Y GB` y `h:mm:ss` transcurrido; en TOTAL
    además `N MB/s` y `ETA h:mm:ss`. Errores debajo, en rojo con `✖`. Durante el
    volcado, destino y jornadas quedan desactivados. Bajo las barras, fila
    `#dump-controls` con «Pausar» (`#btn-pause`); en pausa ese botón pasa a

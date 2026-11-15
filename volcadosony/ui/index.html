@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>VolcadoSony</title>
   <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="barras.css">
 </head>
 <body>
   <main class="app">
@@ -73,7 +74,7 @@
       <div class="bars">
         <div class="bar-row">
           <span class="bar-label" id="pr-file-label"></span>
-          <span class="bar"><span class="bar__done" id="pr-file-done"></span><span class="bar__rest" id="pr-file-rest"></span></span>
+          <span class="bar" id="pr-file-bar"></span>
           <span class="bar-meta">
             <span id="pr-file-pct"></span>
             <span id="pr-file-bytes"></span>
@@ -85,7 +86,7 @@
         </div>
         <div class="bar-row">
           <span class="bar-label" id="pr-lote-label"></span>
-          <span class="bar"><span class="bar__done" id="pr-lote-done"></span><span class="bar__rest" id="pr-lote-rest"></span></span>
+          <span class="bar" id="pr-lote-bar"></span>
           <span class="bar-meta">
             <span id="pr-lote-pct"></span>
             <span id="pr-lote-bytes"></span>
@@ -97,7 +98,7 @@
         </div>
         <div class="bar-row">
           <span class="bar-label" id="pr-total-label"></span>
-          <span class="bar"><span class="bar__done" id="pr-total-done"></span><span class="bar__rest" id="pr-total-rest"></span></span>
+          <span class="bar" id="pr-total-bar"></span>
           <span class="bar-meta">
             <span id="pr-total-pct"></span>
             <span id="pr-total-bytes"></span>
@@ -126,6 +127,7 @@
     <img class="zoom__img" id="zoom-img" alt="">
     <p class="zoom__foot" id="zoom-foot"></p>
   </div>
+  <script src="barras.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

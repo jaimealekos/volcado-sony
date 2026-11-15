@@ -9,13 +9,11 @@
 const SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏";
 const SPIN_MS = 80;
 // Bloques de texto de sobra: la barra los recorta al ancho de su columna.
-const BLOCKS = 200;
 const MB = 1e6;
 const GB = 1e9;
 const CONFIRMAR_MS = 4000;
 const STOP_DEL = "Detener y borrar lo copiado";
 
-const ICONO = { bruto: "🎬", proxy: "🎞", xml: "📄" };
 
 const view = {
   api: null,
@@ -455,16 +453,9 @@ function confirmarBorrar() {
 }
 
 function pintarBarra(prefijo, etiqueta, hecho, total, velocidad, segundos, eta,
-  completa) {
+  completa, tipo = null) {
   const fraccion = total > 0 ? Math.min(1, hecho / total) : 0;
-  const hecha = $("#pr-" + prefijo + "-done");
-  if (!hecha.textContent) {
-    hecha.textContent = "█".repeat(BLOCKS);
-    $("#pr-" + prefijo + "-rest").textContent = "░".repeat(BLOCKS);
-  }
-  hecha.style.width = `${fraccion * 100}%`;
-  $("#pr-" + prefijo + "-done").parentElement.classList.toggle(
-    "bar--full", fraccion >= 1);
+  Barras.pintar(prefijo, fraccion, tipo);
 
   const rotulo = $("#pr-" + prefijo + "-label");
   escribir(rotulo, etiqueta);
@@ -489,10 +480,9 @@ function pintarProgreso(progreso) {
     $("#sec-progress").hidden = false;
     revelar("sec-progress");
   }
-  const icono = ICONO[progreso.tipo] ?? "📄";
-  pintarBarra("file", `${icono} ${progreso.fichero}`,
+  pintarBarra("file", progreso.fichero,
     progreso.fichero_hecho, progreso.fichero_total, 0,
-    progreso.segundos, null, false);
+    progreso.segundos, null, false, progreso.tipo);
   pintarBarra("lote", progreso.lote,
     progreso.lote_hecho, progreso.lote_total, 0,
     progreso.segundos, null, false);
@@ -516,6 +506,15 @@ function bloquear(activo) {
   $("#btn-dump").disabled = activo || !puedeVolcar();
 }
 
+// Datos de la tira de película: peso y miniaturas de cada jornada marcada.
+function jornadasPelicula(indices) {
+  return indices.map((indice) => {
+    const jornada = view.jornadaPorIndice.get(indice);
+    const imagen = (cual) => view.imagenes.get(claveMiniatura(indice, cual))?.datos ?? null;
+    return { peso: Number(jornada.necesario), primero: imagen("primero"), ultimo: imagen("ultimo") };
+  });
+}
+
 function empezarVolcado(nombre, ruta, indices) {
   view.volcando = true;
   $("#sec-space").hidden = true;
@@ -527,6 +526,7 @@ function empezarVolcado(nombre, ruta, indices) {
   $("#dump-controls").hidden = false;
   actualizarPausa(false);
   pintarTituloVolcado();
+  Barras.montar(jornadasPelicula(indices));
   for (const prefijo of ["file", "lote", "total"]) {
     pintarBarra(prefijo, "—", 0, 0, 0, 0, null, prefijo === "total");
   }
