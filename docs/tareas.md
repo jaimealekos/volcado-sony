@@ -11,3 +11,6 @@
 
 ## 4 · 2026-11-15
 «Quita el iconito que precede al nombre de fichero que se está copiando. Pero trabájate algo realmente ingenioso y bonito y gráfico y visual para que vaya dentro de las barras que se van rellenando.»
+
+## 5 · 2026-11-15
+«cambia que la dimensión de la ventana contemple que al lanzar la copia necesitará más altura para que al hacerlo no tengamos que tener scroll vertical»
