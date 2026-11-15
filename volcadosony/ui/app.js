@@ -12,6 +12,8 @@ const SPIN_MS = 80;
 const BLOCKS = 200;
 const MB = 1e6;
 const GB = 1e9;
+const CONFIRMAR_MS = 4000;
+const STOP_DEL = "Detener y borrar lo copiado";
 
 const ICONO = { bruto: "🎬", proxy: "🎞", xml: "📄" };
 
@@ -30,6 +32,9 @@ const view = {
   terminado: false,
   seccion: "sec-card",
   spinnerTimer: null,
+  pausado: false,
+  tituloVolcado: "",
+  confirmarBorrarTimer: null,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -406,6 +411,49 @@ function formatearReloj(segundos) {
   return `${horas}:${minutos}:${resto}`;
 }
 
+function pintarTituloVolcado() {
+  const nodo = crear("span", null, view.tituloVolcado);
+  if (view.pausado) nodo.append(crear("span", "rule__paused", " · EN PAUSA"));
+  $("#progress-rule").replaceChildren(nodo);
+}
+
+function cancelarConfirmarBorrar() {
+  clearTimeout(view.confirmarBorrarTimer);
+  view.confirmarBorrarTimer = null;
+  const boton = $("#btn-stop-del");
+  boton.textContent = STOP_DEL;
+  boton.dataset.confirmando = "no";
+}
+
+function actualizarPausa(pausado) {
+  const cambio = view.pausado !== pausado;
+  view.pausado = pausado;
+  $("#sec-progress").classList.toggle("is-paused", pausado);
+  escribir($("#btn-pause"), pausado ? "Reanudar" : "Pausar");
+  $("#btn-stop-keep").hidden = !pausado;
+  $("#btn-stop-del").hidden = !pausado;
+  if (!pausado) cancelarConfirmarBorrar();
+  if (cambio) pintarTituloVolcado();
+}
+
+function ocultarControles() {
+  $("#dump-controls").hidden = true;
+  actualizarPausa(false);
+}
+
+function confirmarBorrar() {
+  const boton = $("#btn-stop-del");
+  if (boton.dataset.confirmando === "si") {
+    cancelarConfirmarBorrar();
+    llamar("detener", "borrar");
+    return;
+  }
+  boton.dataset.confirmando = "si";
+  boton.textContent = "Pulsa otra vez para borrar";
+  clearTimeout(view.confirmarBorrarTimer);
+  view.confirmarBorrarTimer = setTimeout(cancelarConfirmarBorrar, CONFIRMAR_MS);
+}
+
 function pintarBarra(prefijo, etiqueta, hecho, total, velocidad, segundos, eta,
   completa) {
   const fraccion = total > 0 ? Math.min(1, hecho / total) : 0;
@@ -451,6 +499,7 @@ function pintarProgreso(progreso) {
   pintarBarra("total", `TOTAL ${progreso.visibles_hechos}/${progreso.visibles_total}`,
     progreso.total_hecho, progreso.total_total, progreso.velocidad,
     progreso.segundos, progreso.eta, true);
+  if (typeof progreso.pausado === "boolean") actualizarPausa(progreso.pausado);
 }
 
 function anadirError(texto) {
@@ -472,10 +521,12 @@ function empezarVolcado(nombre, ruta, indices) {
   $("#sec-space").hidden = true;
   $("#sec-progress").hidden = false;
   const total = resumenSeleccion();
-  const titulo = crear("span", null,
-    `Volcando ${total.brutos} brutos + ${total.proxies} proxies`
-      + ` · ${formatearTamano(total.necesario)}`);
-  $("#progress-rule").replaceChildren(titulo);
+  view.tituloVolcado = `Volcando ${total.brutos} brutos + ${total.proxies} proxies`
+    + ` · ${formatearTamano(total.necesario)}`;
+  view.pausado = false;
+  $("#dump-controls").hidden = false;
+  actualizarPausa(false);
+  pintarTituloVolcado();
   for (const prefijo of ["file", "lote", "total"]) {
     pintarBarra(prefijo, "—", 0, 0, 0, 0, null, prefijo === "total");
   }
@@ -555,7 +606,35 @@ function pintarResultado(evento) {
 function terminar(evento) {
   view.volcando = false;
   view.terminado = true;
+  ocultarControles();
   pintarResultado(evento);
+}
+
+function terminarDetenido(evento) {
+  view.volcando = false;
+  view.terminado = true;
+  ocultarControles();
+  for (const error of evento.errores ?? []) anadirError(error);
+
+  const linea = evento.modo === "conservar"
+    ? `Volcado detenido. Se conservan ${evento.copiados} ficheros copiados. `
+      + `${evento.registro}`
+    : "Volcado detenido. Se borraron "
+      + `${evento.borrados} ficheros copiados en esta sesión.`;
+
+  const caja = $("#result");
+  caja.className = "result result--detenido";
+  caja.replaceChildren(crear("p", "result__log", linea));
+
+  const acciones = crear("div", "result__actions");
+  const salir = crear("button", "btn btn--primary", "Salir");
+  salir.type = "button";
+  salir.addEventListener("click", () => llamar("salir"));
+  acciones.append(salir);
+  caja.append(acciones);
+
+  $("#sec-result").hidden = false;
+  revelar("sec-result");
 }
 
 /* ---------------------------- Eventos de Python ------------------------- */
@@ -632,8 +711,13 @@ function aplicar(evento) {
       terminar(evento);
       break;
 
+    case "detenido":
+      terminarDetenido(evento);
+      break;
+
     case "cancelado":
       view.volcando = false;
+      ocultarControles();
       avisar("Volcado cancelado.");
       break;
   }
@@ -685,6 +769,11 @@ function conectarControles() {
   $("#days").addEventListener("change", pintarSeleccion);
 
   $("#btn-dump").addEventListener("click", pedirVolcado);
+  $("#btn-pause").addEventListener("click", () => {
+    llamar(view.pausado ? "reanudar" : "pausar");
+  });
+  $("#btn-stop-keep").addEventListener("click", () => llamar("detener", "conservar"));
+  $("#btn-stop-del").addEventListener("click", confirmarBorrar);
   $("#space-continue").addEventListener("click", () => {
     empezarVolcado($("#dest-name").value, $("#dest-path").value, indicesMarcados());
   });

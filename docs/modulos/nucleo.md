@@ -6,7 +6,8 @@ configuración, `gb`, `plural`, `fecha_bonita`, `sanear_nombre`, `Clip`,
 `buscar_insensible`, `escanear`, `miniatura`, `copiar_archivo` (reescrita sin
 `Progress`), `nombre_proxy_destino`, `volcar` y el registro de `resumen_final`.
 `VERSION = "2.0.0"`. Constantes de miniaturas: `CARPETA_MINIATURAS = "THMBNL"`,
-`SUFIJO_MINIATURA = "T01.JPG"` y `TIMEOUT_FFMPEG_S = 20`.
+`SUFIJO_MINIATURA = "T01.JPG"` y `TIMEOUT_FFMPEG_S = 20`. Pausa:
+`ESPERA_PAUSA_S = 0.1` (tramo de espera).
 
 ## Avisos
 
@@ -98,19 +99,47 @@ class Progreso:
     lote_hecho: int; lote_total: int
     total_hecho: int; total_total: int
     visibles_hechos: int; visibles_total: int   # brutos + proxies, sin XML
-    segundos: float                         # desde el inicio del volcado
+    segundos: float                         # tiempo activo, sin contar la pausa
+    pausado: bool                           # True mientras el volcado está en pausa
 
-class Cancelado(Exception): ...
+class Cancelado(Exception):
+    resultados: list        # (src, dst, tipo, estado) completados hasta el momento
+    errores: list[str]
+    segundos: float         # tiempo activo hasta la cancelación
 
+def esperar_pausa(pausa: threading.Event, cancelar: threading.Event) -> float
+```
+Duerme en tramos de `ESPERA_PAUSA_S` mientras `pausa` esté puesto y `cancelar` no.
+No lee ni escribe. Al pedir cancelar vuelve y la comprobación de quien llama lanza
+`Cancelado`; devuelve los segundos esperados.
+
+```python
+def copiar_archivo(src, dst, avisar, al_bloque, cancelar, pausa) -> str
 def volcar(seleccion, destino, avisar, al_progresar: Callable[[Progreso], None],
-           al_error: Callable[[str], None], cancelar: threading.Event)
-           -> tuple[list, list, float]
+           al_error: Callable[[str], None], cancelar: threading.Event,
+           pausa: threading.Event) -> tuple[list, list, float]
 ```
 Mismo orden, carpetas, comprobación de tamaño, `.part`, `copystat` y omisión de
 idénticos que la v1. `al_progresar` se llama tras cada bloque y al cambiar de
 fichero (la gui se encarga de no saturar la vista). `al_error` recibe cada error de
 copia en cuanto ocurre (y se acumula en la lista). Si `cancelar` está puesto entre
 bloques: borra el `.part` y lanza `Cancelado`.
+
+Con `pausa` puesto, la copia espera entre bloques y antes de cada fichero sin leer
+ni escribir (el `.part` del fichero en curso sigue abierto). Al entrar y al salir de
+la pausa se llama una vez a `al_progresar` con `pausado` actualizado. `segundos` es
+tiempo activo (monótono menos lo pausado), tanto en `Progreso` como en el valor que
+devuelve `volcar`. Si se cancela, `volcar` adjunta a `Cancelado` los `resultados` y
+`errores` acumulados y los `segundos` activos.
+
+```python
+def borrar_copiados(resultados, destino: Path, avisar) -> tuple[int, list[str]]
+```
+Borra solo los `dst` con estado `"copiado"` (nunca los `"omitido"`: ya existían).
+Después elimina `destino/_xml`, `destino/Proxies` y `destino` solo si quedan vacías
+(`rmdir`, nunca `rmtree`). Nunca toca nada fuera de `destino`: si un `dst` resuelto
+no está dentro del `destino` resuelto, lo deja, avisa y lo añade a los errores.
+Devuelve `(n_borrados, errores)` con la ruta y el motivo de cada fallo.
 
 ```python
 def resumen_final(resultados, errores, segundos, destino) -> dict
@@ -137,3 +166,11 @@ devuelve su ruta; lanza `OSError` si falla.
 7. `miniatura` lee el JPG de `THMBNL` (búsqueda insensible); sin THMBNL y sin
    ffmpeg da `None` sin aviso; un ffmpeg que falla da `None` y un aviso con el
    motivo.
+8. `volcar` con `pausa` puesto desde el principio y quitado a los 0.3 s termina
+   bien; `Progreso.segundos` y el `segundos` devuelto son menores que el tiempo
+   real (la pausa no cuenta) y algún progreso lleva `pausado=True`.
+9. Cancelar durante la pausa lanza `Cancelado` con los `resultados` completados,
+   los `errores` y los `segundos` activos, sin dejar `.part`.
+10. `borrar_copiados` borra los copiados, respeta los `"omitido"` y deja la
+    carpeta si no queda vacía; un `dst` fuera de `destino` no se borra y genera
+    error.

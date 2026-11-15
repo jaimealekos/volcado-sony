@@ -3,6 +3,7 @@
 
 import os
 import threading
+import time
 from datetime import date, datetime
 from pathlib import Path
 
@@ -160,7 +161,7 @@ def test_volcar_estructura_orden_y_omitidos(tmp_path):
     progresos, errores = [], []
     resultados, errs, segundos = nucleo.volcar(
         clips, destino, avisos.append, progresos.append, errores.append,
-        threading.Event())
+        threading.Event(), threading.Event())
 
     # Orden de la v1: por jornada, y en cada clip bruto -> xml -> proxy.
     assert [(r[0].name, r[2], r[3]) for r in resultados] == [
@@ -197,7 +198,7 @@ def test_volcar_estructura_orden_y_omitidos(tmp_path):
     fechas = {r[1]: r[1].stat().st_mtime_ns for r in resultados}
     resultados2, errs2, _ = nucleo.volcar(
         clips, destino, avisos.append, lambda _: None, errores.append,
-        threading.Event())
+        threading.Event(), threading.Event())
 
     assert [r[3] for r in resultados2] == ["omitido"] * 6
     assert errs2 == []
@@ -217,7 +218,7 @@ def test_volcar_continua_tras_un_error_de_copia(tmp_path):
     errores = []
     resultados, errs, _ = nucleo.volcar(
         clips, destino, lambda _: None, lambda _: None, errores.append,
-        threading.Event())
+        threading.Event(), threading.Event())
 
     assert len(errs) == 1 and "C0001.MP4" in errs[0]
     assert errores == errs
@@ -239,7 +240,7 @@ def test_volcar_con_cancelar_lanza_cancelado_sin_part(tmp_path):
 
     with pytest.raises(nucleo.Cancelado):
         nucleo.volcar(clips, destino, lambda _: None, lambda _: None,
-                      lambda _: None, cancelar)
+                      lambda _: None, cancelar, threading.Event())
 
     assert not list(destino.rglob("*.part"))
     assert [p for p in destino.rglob("*") if p.is_file()] == []
@@ -264,10 +265,116 @@ def test_volcar_cancelado_a_mitad_de_fichero_borra_el_part(tmp_path, monkeypatch
     destino = tmp_path / "destino"
     with pytest.raises(nucleo.Cancelado):
         nucleo.volcar(clips, destino, lambda _: None, lambda _: None,
-                      lambda _: None, EventoTrasDosConsultas())
+                      lambda _: None, EventoTrasDosConsultas(),
+                      threading.Event())
 
     assert not list(destino.rglob("*.part"))
     assert not (destino / "C0001.MP4").exists()
+
+
+# ------------------- Criterio 8: pausa y tiempo activo ------------------- #
+
+def test_volcar_en_pausa_no_cuenta_el_tiempo_pausado(tmp_path):
+    origen = tarjeta_falsa(tmp_path)
+    crear_bruto(origen, "C0001.MP4", 60, mtime=ts(2024, 11, 5))
+    crear_bruto(origen, "C0002.MP4", 70, mtime=ts(2024, 11, 5))
+    clips, _ = nucleo.escanear(origen, lambda _: None)
+
+    destino = tmp_path / "destino"
+    pausa = threading.Event()
+    pausa.set()
+    threading.Timer(0.3, pausa.clear).start()
+    progresos = []
+    inicio = time.monotonic()
+    resultados, errores, segundos = nucleo.volcar(
+        clips, destino, lambda _: None, progresos.append, lambda _: None,
+        threading.Event(), pausa)
+    total = time.monotonic() - inicio
+
+    assert errores == []
+    assert [r[3] for r in resultados] == ["copiado", "copiado"]
+    assert total >= 0.25
+    assert segundos < total - 0.2
+    assert any(p.pausado for p in progresos)
+
+
+def test_volcar_cancelado_en_pausa_lleva_los_resultados(tmp_path):
+    origen = tarjeta_falsa(tmp_path)
+    crear_bruto(origen, "C0001.MP4", 60, mtime=ts(2024, 11, 5))
+    crear_bruto(origen, "C0002.MP4", 70, mtime=ts(2024, 11, 5))
+    clips, _ = nucleo.escanear(origen, lambda _: None)
+
+    destino = tmp_path / "destino"
+    pausa = threading.Event()
+    cancelar = threading.Event()
+
+    def al_progresar(progreso):
+        if progreso.visibles_hechos >= 1 and not pausa.is_set():
+            pausa.set()
+            threading.Timer(0.2, cancelar.set).start()
+
+    with pytest.raises(nucleo.Cancelado) as info:
+        nucleo.volcar(clips, destino, lambda _: None, al_progresar,
+                      lambda _: None, cancelar, pausa)
+
+    error = info.value
+    assert [r[3] for r in error.resultados] == ["copiado"]
+    assert error.errores == []
+    assert error.segundos >= 0
+    assert not list(destino.rglob("*.part"))
+
+
+# --------------------- Criterio 9: borrar lo copiado ---------------------- #
+
+def test_borrar_copiados_respeta_omitidos_y_carpetas_no_vacias(tmp_path):
+    destino = tmp_path / "destino"
+    (destino / "_xml").mkdir(parents=True)
+    (destino / "Proxies").mkdir()
+    copiado = destino / "C0001.MP4"
+    copiado.write_bytes(b"copiado")
+    omitido = destino / "C0002.MP4"
+    omitido.write_bytes(b"omitido")
+    xml = destino / "_xml" / "C0001M01.XML"
+    xml.write_bytes(b"xml")
+    proxy = destino / "Proxies" / "C0001_Proxy.MP4"
+    proxy.write_bytes(b"proxy")
+    extra = destino / "nota.txt"
+    extra.write_bytes(b"extra")
+
+    resultados = [
+        (tmp_path / "origen1", copiado, "bruto", "copiado"),
+        (tmp_path / "origen2", omitido, "bruto", "omitido"),
+        (tmp_path / "origen3", xml, "xml", "copiado"),
+        (tmp_path / "origen4", proxy, "proxy", "copiado"),
+    ]
+    borrados, errores = nucleo.borrar_copiados(resultados, destino, lambda _: None)
+
+    assert borrados == 3
+    assert errores == []
+    assert not copiado.exists()
+    assert not xml.exists()
+    assert not proxy.exists()
+    assert omitido.is_file()
+    assert extra.is_file()
+    assert destino.is_dir()
+    assert not (destino / "_xml").exists()
+    assert not (destino / "Proxies").exists()
+
+
+def test_borrar_copiados_no_borra_nada_fuera_del_destino(tmp_path):
+    destino = tmp_path / "destino"
+    destino.mkdir()
+    fuera = tmp_path / "fuera.MP4"
+    fuera.write_bytes(b"no se borra")
+    resultados = [(tmp_path / "origen", fuera, "bruto", "copiado")]
+
+    avisos = []
+    borrados, errores = nucleo.borrar_copiados(resultados, destino, avisos.append)
+
+    assert borrados == 0
+    assert fuera.is_file()
+    assert len(errores) == 1 and str(fuera) in errores[0]
+    assert avisos == errores
 
 
 # -------------------- Criterio 5: resumen y registro ---------------------- #

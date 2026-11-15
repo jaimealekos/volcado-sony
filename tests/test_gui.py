@@ -214,6 +214,100 @@ def test_volcar_solo_la_jornada_marcada_copia_sus_clips(tmp_path):
     assert list(destino.glob("volcado_*.txt"))
 
 
+# ------------------- Criterio 8: pausar, reanudar y detener --------------- #
+
+class CopiaLenta:
+    """Copia real que, tras el primer fichero, espera a que la prueba la suelte."""
+
+    def __init__(self, monkeypatch):
+        self._real = nucleo.copiar_archivo
+        self.copiado_uno = threading.Event()
+        self.continuar = threading.Event()
+        monkeypatch.setattr(nucleo, "copiar_archivo", self)
+
+    def __call__(self, src, dst, avisar, al_bloque, cancelar, pausa):
+        estado = self._real(src, dst, avisar, al_bloque, cancelar, pausa)
+        if estado == "copiado" and not self.copiado_uno.is_set():
+            self.copiado_uno.set()
+            self.continuar.wait(5)
+        return estado
+
+
+def api_con_dos_brutos(tmp_path):
+    tarjeta = tarjeta_falsa(tmp_path)
+    crear_bruto(tarjeta, "C0001.MP4", 60, mtime=ts(2024, 11, 5))
+    crear_bruto(tarjeta, "C0002.MP4", 70, mtime=ts(2024, 11, 5))
+    api, ventana = api_de_prueba(tmp_path, str(tarjeta))
+    api.iniciar()
+    esperar_evento(ventana, "tarjeta")
+    return api, ventana
+
+
+def test_detener_conservar_emite_detenido_y_deja_lo_copiado(tmp_path, monkeypatch):
+    api, ventana = api_con_dos_brutos(tmp_path)
+    base = tmp_path / "base"
+    copia = CopiaLenta(monkeypatch)
+    try:
+        api.volcar("Copia", str(base), [1])
+        assert copia.copiado_uno.wait(2)
+        api.pausar()
+        api.detener("conservar")
+        copia.continuar.set()
+        detenido = esperar_evento(ventana, "detenido")
+    finally:
+        copia.continuar.set()
+        api._al_cerrar()
+
+    destino = base / "Copia"
+    assert detenido["modo"] == "conservar"
+    assert detenido["copiados"] == 1
+    assert detenido["errores"] == []
+    assert detenido["registro"].startswith("Registro guardado en ")
+    assert (destino / "C0001.MP4").is_file()
+    assert not (destino / "C0002.MP4").exists()
+    assert list(destino.glob("volcado_*.txt"))
+
+
+def test_detener_borrar_emite_detenido_y_no_deja_lo_copiado(tmp_path, monkeypatch):
+    api, ventana = api_con_dos_brutos(tmp_path)
+    base = tmp_path / "base"
+    copia = CopiaLenta(monkeypatch)
+    try:
+        api.volcar("Copia", str(base), [1])
+        assert copia.copiado_uno.wait(2)
+        api.pausar()
+        api.detener("borrar")
+        copia.continuar.set()
+        detenido = esperar_evento(ventana, "detenido")
+    finally:
+        copia.continuar.set()
+        api._al_cerrar()
+
+    destino = base / "Copia"
+    assert detenido["modo"] == "borrar"
+    assert detenido["borrados"] == 1
+    assert detenido["errores"] == []
+    assert detenido["destino"] == str(destino)
+    assert not destino.exists()
+    assert not list(base.rglob("*.part"))
+
+
+def test_detener_sin_volcado_y_modo_invalido_dan_error(tmp_path):
+    api, ventana = api_de_prueba(tmp_path)
+    try:
+        api.detener("conservar")
+        error_sin_volcado = esperar_evento(ventana, "error")
+
+        desde = len(ventana.eventos())
+        api.detener("otro")
+        error_modo = esperar_evento(ventana, "error", desde=desde)
+    finally:
+        api._al_cerrar()
+
+    assert "volcado" in error_sin_volcado["texto"].lower()
+    assert "modo" in error_modo["texto"].lower()
+
+
 # --------------------- Criterio 5: agrupación del emisor ------------------ #
 
 def test_emisor_deja_el_ultimo_progreso_y_conserva_el_orden():
@@ -393,7 +487,7 @@ def test_al_cerrar_cancela_el_volcado_y_emite_cancelado(tmp_path, monkeypatch):
     entrado = threading.Event()
 
     def volcar_bloqueado(seleccion, destino, avisar, al_progresar, al_error,
-                         cancelar):
+                         cancelar, pausa):
         entrado.set()
         cancelar.wait(5)
         raise nucleo.Cancelado("cancelado en la prueba")

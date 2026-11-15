@@ -342,6 +342,22 @@ button, input {
   color: var(--dim);
 }
 
+.btn--danger {
+  padding: 0 1ch;
+  border: 1px solid var(--red);
+  color: var(--red);
+}
+
+.btn--danger::before,
+.btn--danger::after {
+  content: "";
+}
+
+.btn--danger:hover:not(:disabled) {
+  border-color: #FCA5A5;
+  color: #FCA5A5;
+}
+
 /* ------------------------------- Resumen ------------------------------- */
 
 .summary {
@@ -676,6 +692,18 @@ button, input {
   }
 }
 
+.dump-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2ch;
+  margin-block-start: 0.5em;
+}
+
+.rule__paused {
+  color: var(--yellow);
+}
+
 .errors {
   display: flex;
   flex-direction: column;
@@ -693,6 +721,10 @@ button, input {
 
 .result--err {
   border-color: var(--red);
+}
+
+.result--detenido {
+  border-color: var(--yellow);
 }
 
 .result__title {

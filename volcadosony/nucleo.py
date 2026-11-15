@@ -38,6 +38,7 @@ MARGEN_ESPACIO = 1.02            # margen de seguridad al comprobar el espacio l
 CARPETA_MINIATURAS = "THMBNL"    # subcarpeta de miniaturas de la tarjeta
 SUFIJO_MINIATURA = "T01.JPG"     # sufijo Sony de la miniatura del bruto
 TIMEOUT_FFMPEG_S = 20            # espera máxima al extraer un fotograma
+ESPERA_PAUSA_S = 0.1             # tramo de espera mientras el volcado está en pausa
 
 DIAS_ES = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
 MESES_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio",
@@ -370,7 +371,14 @@ class ErrorCopia(Exception):
 
 
 class Cancelado(Exception):
-    pass
+    """Volcado cancelado; lleva lo completado hasta el momento."""
+
+    def __init__(self, mensaje: str = "", resultados: list | None = None,
+                 errores: list[str] | None = None, segundos: float = 0.0) -> None:
+        super().__init__(mensaje)
+        self.resultados = [] if resultados is None else resultados
+        self.errores = [] if errores is None else errores
+        self.segundos = segundos
 
 
 @dataclass
@@ -386,12 +394,56 @@ class Progreso:
     total_total: int
     visibles_hechos: int         # brutos + proxies, sin XML
     visibles_total: int
-    segundos: float              # desde el inicio del volcado
+    segundos: float              # tiempo activo, sin contar la pausa
+    pausado: bool = False        # True mientras el volcado está en pausa
+
+
+class _PausaContada:
+    """Evento de pausa que acumula el tiempo que se pasa esperándolo."""
+
+    def __init__(self, evento: threading.Event) -> None:
+        self._evento = evento
+        self.pausado = 0.0
+
+    def is_set(self) -> bool:
+        return self._evento.is_set()
+
+    def wait(self, timeout: float | None = None) -> bool:
+        inicio = time.monotonic()
+        resultado = self._evento.wait(timeout)
+        self.pausado += time.monotonic() - inicio
+        return resultado
+
+
+def esperar_pausa(pausa: threading.Event, cancelar: threading.Event) -> float:
+    """Espera mientras `pausa` esté puesto, sin leer ni escribir.
+
+    Duerme en tramos de `ESPERA_PAUSA_S` hasta que se quite la pausa o se pida
+    cancelar; en ese caso vuelve y la comprobación de cancelación de quien llama
+    lanza `Cancelado`. Devuelve los segundos que ha estado esperando.
+    """
+    inicio = None
+    while pausa.is_set() and not cancelar.is_set():
+        if inicio is None:
+            inicio = time.monotonic()
+        time.sleep(ESPERA_PAUSA_S)
+    return 0.0 if inicio is None else time.monotonic() - inicio
+
+
+def _esperar_si_pausa(pausa: threading.Event, cancelar: threading.Event,
+                      notificar: Callable[[], None]) -> None:
+    """Si la pausa está puesta, avisa al entrar y al salir y espera."""
+    if not pausa.is_set():
+        return
+    notificar()
+    esperar_pausa(pausa, cancelar)
+    notificar()
 
 
 def copiar_archivo(src: Path, dst: Path, avisar: Callable[[str], None],
                    al_bloque: Callable[[int], None],
-                   cancelar: threading.Event) -> str:
+                   cancelar: threading.Event,
+                   pausa: threading.Event) -> str:
     """Copia con bloques. Devuelve 'copiado' | 'omitido'. Lanza ErrorCopia o Cancelado."""
     parcial = dst.with_suffix(dst.suffix + ".part")
     try:
@@ -403,6 +455,7 @@ def copiar_archivo(src: Path, dst: Path, avisar: Callable[[str], None],
 
         with open(src, "rb", buffering=0) as fi, open(parcial, "wb") as fo:
             while True:
+                _esperar_si_pausa(pausa, cancelar, lambda: al_bloque(0))
                 if cancelar.is_set():
                     raise Cancelado(f"Volcado cancelado al copiar {src.name}")
                 bloque = fi.read(CHUNK)
@@ -436,10 +489,12 @@ def nombre_proxy_destino(proxy: Path) -> str:
 def volcar(seleccion: list[Clip], destino: Path, avisar: Callable[[str], None],
            al_progresar: Callable[[Progreso], None],
            al_error: Callable[[str], None],
-           cancelar: threading.Event) -> tuple[list, list, float]:
+           cancelar: threading.Event,
+           pausa: threading.Event) -> tuple[list, list, float]:
     """Copia cada bruto por lotes de jornada, seguido de su XML y su proxy.
 
-    Devuelve (resultados, errores, segundos)."""
+    Devuelve (resultados, errores, segundos activos). En pausa no lee ni escribe;
+    `Cancelado` lleva lo completado hasta ese momento."""
     grupos: list[tuple[str, list[tuple[Path, Path, str]]]] = []
     jornadas = agrupar_jornadas(seleccion)
     for j in jornadas:
@@ -466,12 +521,16 @@ def volcar(seleccion: list[Clip], destino: Path, avisar: Callable[[str], None],
     if hay_proxy:
         (destino / CARPETA_PROXIES).mkdir(exist_ok=True)
 
+    pausa = _PausaContada(pausa)
     resultados, errores = [], []
     inicio = time.monotonic()
     fichero_hecho = lote_hecho = total_hecho = 0
     visibles_hechos = 0
     fichero_nombre, fichero_tipo, fichero_total = "", "", 0
     etiqueta_lote, lote_total = "", 0
+
+    def segundos_activos() -> float:
+        return time.monotonic() - inicio - pausa.pausado
 
     def informar() -> None:
         al_progresar(Progreso(
@@ -486,20 +545,26 @@ def volcar(seleccion: list[Clip], destino: Path, avisar: Callable[[str], None],
             total_total=total_bytes,
             visibles_hechos=visibles_hechos,
             visibles_total=visibles_total,
-            segundos=time.monotonic() - inicio,
+            segundos=segundos_activos(),
+            pausado=pausa.is_set(),
         ))
+
+    def cancelado(mensaje: str) -> Cancelado:
+        return Cancelado(mensaje, resultados, errores, segundos_activos())
 
     for etiqueta_lote, trabajos in grupos:
         lote_total = sum(t[0].stat().st_size for t in trabajos)
         lote_hecho = 0
         for src, dst, tipo in trabajos:
-            if cancelar.is_set():
-                raise Cancelado(f"Volcado cancelado antes de copiar {src.name}")
-
             fichero_nombre, fichero_tipo = src.name, tipo
             fichero_hecho = 0
             fichero_total = max(src.stat().st_size, 1)
-            informar()
+            if pausa.is_set():
+                _esperar_si_pausa(pausa, cancelar, informar)
+            else:
+                informar()
+            if cancelar.is_set():
+                raise cancelado(f"Volcado cancelado antes de copiar {src.name}")
 
             def al_bloque(n: int) -> None:
                 nonlocal fichero_hecho, lote_hecho, total_hecho
@@ -509,8 +574,10 @@ def volcar(seleccion: list[Clip], destino: Path, avisar: Callable[[str], None],
                 informar()
 
             try:
-                estado = copiar_archivo(src, dst, avisar, al_bloque, cancelar)
+                estado = copiar_archivo(src, dst, avisar, al_bloque, cancelar, pausa)
                 resultados.append((src, dst, tipo, estado))
+            except Cancelado as e:
+                raise cancelado(str(e)) from e
             except ErrorCopia as e:
                 errores.append(str(e))
                 al_error(str(e))
@@ -518,7 +585,57 @@ def volcar(seleccion: list[Clip], destino: Path, avisar: Callable[[str], None],
                 visibles_hechos += 1
                 informar()
 
-    return resultados, errores, time.monotonic() - inicio
+    return resultados, errores, segundos_activos()
+
+
+# ------------------------------- Limpieza ---------------------------------- #
+
+def _dentro(ruta: Path, base: Path) -> bool:
+    try:
+        ruta.relative_to(base)
+        return True
+    except ValueError:
+        return False
+
+
+def borrar_copiados(resultados, destino: Path,
+                    avisar: Callable[[str], None]) -> tuple[int, list[str]]:
+    """Borra los dst copiados de `resultados` y las carpetas vacías.
+
+    Los "omitido" no se tocan (ya existían). Nunca sale de `destino`: un dst
+    resuelto fuera de él es un error y no se borra. Las carpetas se eliminan
+    con `rmdir` y solo si quedan vacías. Devuelve (n_borrados, errores).
+    """
+    destino_resuelto = destino.resolve()
+    borrados = 0
+    errores: list[str] = []
+
+    def fallo(ruta: Path, motivo: str) -> None:
+        texto = f"{ruta}: {motivo}"
+        errores.append(texto)
+        avisar(texto)
+
+    for _src, dst, _tipo, estado in resultados:
+        if estado != "copiado":
+            continue
+        ruta = Path(dst)
+        try:
+            if not _dentro(ruta.resolve(), destino_resuelto):
+                fallo(ruta, f"está fuera del destino {destino}; no se borra")
+                continue
+            ruta.unlink()
+            borrados += 1
+        except OSError as e:
+            fallo(ruta, str(e))
+
+    for carpeta in (destino / CARPETA_XML, destino / CARPETA_PROXIES, destino):
+        try:
+            if carpeta.is_dir() and not any(carpeta.iterdir()):
+                carpeta.rmdir()
+        except OSError as e:
+            fallo(carpeta, str(e))
+
+    return borrados, errores
 
 
 # --------------------------------- Resumen --------------------------------- #

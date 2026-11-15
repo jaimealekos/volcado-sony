@@ -129,6 +129,8 @@ class Api:
 
         self._jornadas: list[nucleo.Jornada] = []
         self._cancelar = threading.Event()
+        self._pausa = threading.Event()
+        self._modo_detener: str | None = None
         self._lock_volcado = threading.Lock()
         self._hilo_volcado: threading.Thread | None = None
         self._volcado_iniciado = False
@@ -292,9 +294,42 @@ class Api:
         base = Path(ruta) if ruta and ruta.strip() else nucleo.escritorio(self._avisar)
         destino = base / saneado
         self._cancelar.clear()
+        self._pausa.clear()
+        self._modo_detener = None
         self._hilo_volcado = threading.Thread(
             target=self._copiar, args=(seleccion, destino), daemon=True)
         self._hilo_volcado.start()
+
+    def pausar(self) -> None:
+        """Pone en pausa el volcado en curso."""
+        if not self._volcado_activo():
+            self._error("No hay ningún volcado en curso para pausar.")
+            return
+        self._pausa.set()
+
+    def reanudar(self) -> None:
+        """Quita la pausa del volcado en curso."""
+        if not self._volcado_activo():
+            self._error("No hay ningún volcado en curso que reanudar.")
+            return
+        self._pausa.clear()
+
+    def detener(self, modo: str) -> None:
+        """Detiene el volcado: `modo` es "conservar" o "borrar"."""
+        if modo not in ("conservar", "borrar"):
+            self._error(f"Modo de detención no válido: {modo!r}. "
+                        "Usa «conservar» o «borrar».")
+            return
+        if not self._volcado_activo():
+            self._error("No hay ningún volcado en curso que detener.")
+            return
+        self._modo_detener = modo
+        self._cancelar.set()
+        self._pausa.clear()
+
+    def _volcado_activo(self) -> bool:
+        return (self._hilo_volcado is not None
+                and self._hilo_volcado.is_alive())
 
     def salir(self) -> None:
         self._ventana.destroy()
@@ -325,11 +360,13 @@ class Api:
             try:
                 resultados, errores, segundos = nucleo.volcar(
                     seleccion, destino, self._avisar, self._progreso,
-                    self._error, self._cancelar)
-            except nucleo.Cancelado:
-                self._emisor.emitir({"type": "cancelado"})
+                    self._error, self._cancelar, self._pausa)
+            except nucleo.Cancelado as e:
+                self._detener_volcado(e, destino)
                 return
 
+            self._modo_detener = None
+            self._pausa.clear()
             resumen = nucleo.resumen_final(resultados, errores, segundos, destino)
             self._emisor.emitir({
                 "type": "fin",
@@ -345,6 +382,35 @@ class Api:
             self._error(texto)
             self._emisor.emitir({"type": "fin", "ok": False, "filas": [],
                                  "errores": [texto], "registro": texto})
+
+    def _detener_volcado(self, e: nucleo.Cancelado, destino: Path) -> None:
+        """Convierte la cancelación en `cancelado` o `detenido` según el modo."""
+        modo = self._modo_detener
+        self._modo_detener = None
+        self._pausa.clear()
+        if modo is None:
+            self._emisor.emitir({"type": "cancelado"})
+            return
+        if modo == "conservar":
+            copiados = sum(1 for r in e.resultados if r[3] == "copiado")
+            self._emisor.emitir({
+                "type": "detenido",
+                "modo": "conservar",
+                "copiados": copiados,
+                "registro": self._guardar_registro(
+                    e.resultados, e.errores, e.segundos, destino),
+                "errores": list(e.errores),
+            })
+            return
+        borrados, errores = nucleo.borrar_copiados(
+            e.resultados, destino, self._avisar)
+        self._emisor.emitir({
+            "type": "detenido",
+            "modo": "borrar",
+            "borrados": borrados,
+            "errores": list(e.errores) + errores,
+            "destino": str(destino),
+        })
 
     def _guardar_registro(self, resultados: list, errores: list[str],
                           segundos: float, destino: Path) -> str:
@@ -362,6 +428,7 @@ class Api:
 
     def _al_cerrar(self) -> None:
         """Al cerrar la ventana: cancela el volcado, lo espera y para el emisor."""
+        self._pausa.clear()
         self._cancelar.set()
         if (self._hilo_volcado is not None
                 and self._hilo_volcado is not threading.current_thread()):

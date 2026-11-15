@@ -32,9 +32,10 @@ lista de eventos. De varios `progreso` seguidos solo queda el último. Tipos:
 | `tarjeta` | `ruta`, `resumen` (dict de `nucleo.resumen_tarjeta`), `jornadas` (lista de `describir_jornada`), `escritorio` (str), `vacia` (bool) | escaneo hecho |
 | `miniatura` | `indice`, `cual` (`"primero"` \| `"ultimo"`), `nombre`, `datos` (data URL JPEG o `null`) | tras `tarjeta`, una por el primer y el último clip de cada jornada (jornada de un clip: solo `primero`) |
 | `aviso` | `texto` | cualquier `avisar` del núcleo |
-| `progreso` | campos de `nucleo.Progreso` + `velocidad` (B/s del total copiado) y `eta` (s o null) | durante el volcado |
-| `error` | `texto` | error de copia |
+| `progreso` | campos de `nucleo.Progreso` (incluye `pausado`) + `velocidad` (B/s del total copiado) y `eta` (s o null) | durante el volcado |
+| `error` | `texto` | error de copia o de los controles |
 | `fin` | `ok`, `filas`, `errores: [str]`, `registro` (texto de la línea final: «Registro guardado en X» o el error) | volcado terminado |
+| `detenido` | `modo` (`"conservar"` \| `"borrar"`), `copiados` y `registro` (conservar), o `borrados`, `errores` y `destino` (borrar) | volcado detenido desde la vista |
 | `cancelado` | — | volcado cancelado al cerrar |
 
 ### Api (métodos llamados desde JS; ninguno bloquea la vista más de un instante)
@@ -55,6 +56,15 @@ lista de eventos. De varios `progreso` seguidos solo queda el último. Tipos:
   y devuelve `{"ok": True}`.
 - `volcar(nombre, ruta, indices)` → lanza el volcado en un hilo con las jornadas
   marcadas; al acabar, `fin` (incluye `guardar_registro`). Una sola vez por sesión.
+- `pausar()` / `reanudar()` → ponen y quitan `self._pausa` (solo con volcado en
+  curso; si no, `error`).
+- `detener(modo)` → `modo` es `"conservar"` o `"borrar"` (otro valor: `error`
+  explícito). Solo con volcado en curso (si no, `error`). Guarda el modo, pone
+  `cancelar` y quita la pausa. Al capturar `Cancelado`: sin modo (cierre) emite
+  `cancelado`; con `"conservar"` guarda el registro de `e.resultados` y emite
+  `detenido` con `copiados` (resultados `"copiado"`), `registro` y `errores`; con
+  `"borrar"` llama a `nucleo.borrar_copiados` y emite `detenido` con `borrados`,
+  `errores`, `destino`, sin registro.
 - `salir()` → cierra la ventana.
 - Al cerrar la ventana (`events.closing`) con un volcado en marcha: se pone el
   `threading.Event` de cancelación y se espera al hilo (máx. 5 s); el núcleo borra
@@ -133,12 +143,25 @@ contenido (no de la ventana), en este orden:
    `white-space: nowrap` y sin cortar; si no caben, pasan a una segunda línea bajo
    la barra. En fichero y lote solo `%`, `X/Y GB` y `h:mm:ss` transcurrido; en TOTAL
    además `N MB/s` y `ETA h:mm:ss`. Errores debajo, en rojo con `✖`. Durante el
-   volcado, destino y jornadas quedan desactivados.
+   volcado, destino y jornadas quedan desactivados. Bajo las barras, fila
+   `#dump-controls` con «Pausar» (`#btn-pause`); en pausa ese botón pasa a
+   «Reanudar» y aparecen «Detener y conservar lo copiado» (`#btn-stop-keep`) y
+   «Detener y borrar lo copiado» (`#btn-stop-del`, clase `btn--danger`: borde y
+   texto `--red`). Ocultos fuera del volcado y al terminar.
+   «Detener y borrar» pide confirmación en dos pasos sin diálogos nativos: el
+   primer clic cambia el texto a «Pulsa otra vez para borrar» durante
+   `CONFIRMAR_MS = 4000`; el segundo dentro del plazo llama a `detener("borrar")`.
+   En pausa, el título de la regla añade « · EN PAUSA» en `--yellow` y
+   `#sec-progress` lleva la clase `is-paused`.
 8. Resultado: las barras y los errores del volcado NO se ocultan; debajo aparece una
    caja de doble línea verde con «✔ VOLCADO COMPLETADO» (texto blanco sobre verde) o
    roja con «VOLCADO TERMINADO CON ERRORES», la lista de errores, la tabla de `filas`
    (columna de rótulos de 18ch, borde verde o rojo) y la línea del registro en
-   `--dim` (en rojo si falló). Botón «Salir».
+   `--dim` (en rojo si falló). Botón «Salir». El evento `detenido` oculta los
+   controles, desbloquea lo mismo que `fin` y muestra en esa zona una línea:
+   conservar → «Volcado detenido. Se conservan N ficheros copiados. <registro>»;
+   borrar → «Volcado detenido. Se borraron N ficheros copiados en esta sesión.».
+   Sus errores van a la caja `#errors` existente.
 
 Avisos (`aviso`): se añaden a una lista `⚠ texto` en amarillo justo bajo la
 sección en curso. La vista se desplaza sola para que la sección en curso quede a
@@ -160,3 +183,9 @@ la vista. Teclado: Enter en los campos de destino = Volcar si está activo.
 7. Tras `iniciar` con tarjeta falsa con `THMBNL`, llegan eventos `miniatura` con
    data URL para el primero y el último de cada jornada; una jornada de un solo
    clip solo emite `primero`.
+8. `detener("conservar")` a mitad emite `detenido` con `modo="conservar"` y deja
+   los ficheros copiados y el registro.
+9. `detener("borrar")` a mitad emite `detenido` con `modo="borrar"` y no deja
+   nada copiado.
+10. `detener` sin volcado en curso da `error`; un `modo` distinto de
+    `"conservar"`/`"borrar"` da `error` explícito.
